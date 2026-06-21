@@ -54,10 +54,8 @@ jobs:
             latest
           version: ${{ needs.init.outputs.version }}
           context: hetrixtools-agent
-          # Per-arch base; builds natively on the matching runner.
-          # TODO: pin this tag (renovate) before relying on it for releases.
-          build-args: |
-            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
+          # Base image is pinned (tag + digest) as the Dockerfile BUILD_FROM
+          # default; buildx selects the arch from the multi-arch manifest.
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           # Push/sign only on a published release; branch pushes just build.
           push: ${{ github.event_name == 'release' }}
