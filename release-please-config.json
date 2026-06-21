@@ -6,8 +6,14 @@
       "release-as": "0.1.0",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        "config.yaml",
-        "Dockerfile"
+        {
+          "type": "generic",
+          "path": "config.yaml"
+        },
+        {
+          "type": "generic",
+          "path": "Dockerfile"
+        }
       ]
     }
   },
