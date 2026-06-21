@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.0...hetrixtools-agent-v0.1.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* ship a single multi-arch image (no {arch}) ([#18](https://github.com/owine/ha-hetrixtools-agent/issues/18)) ([57b23f9](https://github.com/owine/ha-hetrixtools-agent/commit/57b23f9d10e2a23205e1af1ddee9ac7a70da42cd))
+
 ## 0.1.0 (2026-06-21)
 
 
