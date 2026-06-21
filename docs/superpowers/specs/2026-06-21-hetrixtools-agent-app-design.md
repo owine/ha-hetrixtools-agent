@@ -89,7 +89,10 @@ ha-hetrixtools-agent/
 - `full_access: true` — hardware-level access.
 - `host_network: true` — real host interfaces/`/proc/net/dev`.
 - `host_pid: true` — host process namespace for `/proc/*`, `ps`/`pgrep`.
-- `devices` / `udev: true` — `/dev` block devices for `smartctl`, `nvme`, `lsblk`.
+- `udev: true` — populate `/dev` so `smartctl`, `nvme`, `lsblk` see host block devices.
+  Rely on `full_access` + `udev` for `/dev` visibility rather than enumerating an explicit
+  `devices:` list (device paths vary by hardware; an explicit list would be redundant and
+  brittle). Revisit only if a specific device proves invisible on target hardware.
 
 The agent's CLI tool dependencies are installed **inside the image** (not assumed on the
 host): `smartmontools`, `lm-sensors`, `util-linux`, `iproute2`, `nvme-cli`, `mdadm`, and
@@ -109,13 +112,13 @@ from the container, so `CheckServices` works only for `pgrep`-style process matc
 |---|---|---|---|
 | `sid` | str, **required**, `match(^[A-Za-z0-9]{32}$)` | `SID` | Fail fast if absent/malformed |
 | `collect_every_seconds` | int, default `3` | `CollectEveryXSeconds` | |
-| `check_drive_health` | bool, default `false` | `CheckDriveHealth` | needs `smartctl` + `/dev` |
+| `check_drive_health` | bool, default `false` | `CheckDriveHealth` | needs `smartctl` + `/dev` (via `udev`) |
 | `check_soft_raid` | bool, default `false` | `CheckSoftRAID` | `/proc/mdstat`, `mdadm` |
 | `check_reboot` | bool, default `false` | `CheckReboot` | usually no-op on HA OS |
 | `running_processes` | bool, default `false` | `RunningProcesses` | host procs via `host_pid` |
 | `connection_ports` | list[str], default `[]` | `ConnectionPorts` | |
 | `check_services` | list[str], default `[]` | `CheckServices` | `pgrep` matching only (caveat above) |
-| `dry_run` | bool, default `false` | n/a (wrapper) | print payload instead of POSTing |
+| `dry_run` | bool, default `false` | n/a (wrapper) | A real `bool?` in `options`/`schema` — consumed by the wrapper (env flag), not written to the cfg; prints payload instead of POSTing |
 
 ## Runtime / service
 
@@ -126,9 +129,12 @@ from the container, so `CheckServices` works only for `pgrep`-style process matc
   1. Read options via `bashio::config`.
   2. Validate `sid` (present + 32 chars) — `bashio::exit.nok` with a clear message otherwise.
   3. Render `/etc/hetrixtools/hetrixtools.cfg` from a template + options.
-  4. `while true; do bash hetrixtools_agent.sh; done` — each invocation is one ~60s
-     collect-then-POST cycle, yielding continuous minute-by-minute reporting without an
-     external scheduler.
+  4. Loop the agent: each invocation is one ~60s collect-then-POST cycle, yielding
+     continuous minute-by-minute reporting without an external scheduler. The loop **must
+     guard against a tight crash loop**: if an invocation returns in well under the expected
+     ~60s (early POST failure, an uncaught fast-exit), sleep to backfill the remainder of the
+     minute before re-invoking, so a degraded agent never hammers `sm.hetrixtools.net`. (s6
+     restart throttling is a secondary backstop; the explicit sleep is the primary guard.)
 - `dry_run=true` sets an env flag that makes the agent print the JSON payload instead of
   POSTing (used by CI smoke test and local debugging).
 
@@ -137,6 +143,12 @@ from the container, so `CheckServices` works only for `pgrep`-style process matc
 - Commit a **pinned** copy of `hetrixtools_agent.sh` into the app folder.
 - Strip/disable: the self-update path and any cron/systemd scheduling assumptions; verify the
   collect-then-POST cycle runs cleanly when invoked directly and when optional tools are absent.
+- **The wrapper ↔ script boundary is the riskiest part of this app and the plan must pin it
+  down explicitly:** identify the exact upstream function(s)/lines removed (self-update,
+  scheduler install), confirm a single invocation does exactly one collect-then-POST and exits
+  non-error, and define precisely how the `dry_run` env flag is threaded into the upstream
+  script to short-circuit the `wget` POST. A clean, predictable per-invocation contract is what
+  makes the external loop and the CI smoke test valid.
 - Record the upstream version/commit in a marker that renovate's custom regex manager tracks,
   so dependency bumps surface as PRs.
 
