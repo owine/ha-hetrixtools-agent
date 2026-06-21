@@ -8,16 +8,15 @@ setup() {
 
 teardown() { rm -rf "$TMP"; }
 
-@test "writes SID and defaults" {
-  SID="abcdefghijklmnopqrstuvwxyz012345" \
-  COLLECT_EVERY_SECONDS=3 \
-  CHECK_DRIVE_HEALTH=0 CHECK_SOFT_RAID=0 CHECK_REBOOT=0 RUNNING_PROCESSES=0 \
-  CONNECTION_PORTS="" CHECK_SERVICES="" \
-    bash "$RENDER" "$CFG"
+@test "writes SID and applies defaults when only SID is set" {
+  # Set ONLY SID so the script's :- fallbacks are actually exercised.
+  SID="abcdefghijklmnopqrstuvwxyz012345" bash "$RENDER" "$CFG"
   run cat "$CFG"
   [ "$status" -eq 0 ]
   [[ "$output" == *'SID="abcdefghijklmnopqrstuvwxyz012345"'* ]]
   [[ "$output" == *'CollectEveryXSeconds=3'* ]]
+  [[ "$output" == *'CheckDriveHealth=0'* ]]
+  [[ "$output" == *'ConnectionPorts=""'* ]]
 }
 
 @test "maps booleans and lists" {
@@ -27,6 +26,7 @@ teardown() { rm -rf "$TMP"; }
   CONNECTION_PORTS="80,443" CHECK_SERVICES="ssh,cron" \
     bash "$RENDER" "$CFG"
   run cat "$CFG"
+  [ "$status" -eq 0 ]
   [[ "$output" == *'CheckDriveHealth=1'* ]]
   [[ "$output" == *'CheckSoftRAID=1'* ]]
   [[ "$output" == *'RunningProcesses=1'* ]]
