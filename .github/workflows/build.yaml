@@ -12,23 +12,35 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write  # keyless cosign signing
     strategy:
       matrix:
         arch: [aarch64, amd64]
     steps:
       - uses: actions/checkout@v4
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read app version
+        id: meta
+        run: |
+          version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
+            | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
       - name: Build & push ${{ matrix.arch }}
-        uses: home-assistant/builder@master
+        uses: home-assistant/builder/actions/build-image@2026.06.0
         with:
-          args: |
-            --${{ matrix.arch }} \
-            --target /data/hetrixtools-agent \
-            --image "hetrixtools-agent-{arch}" \
-            --docker-hub "ghcr.io/owine" \
-            --addon
+          arch: ${{ matrix.arch }}
+          image: ghcr.io/owine/hetrixtools-agent-${{ matrix.arch }}
+          image-tags: |
+            ${{ steps.meta.outputs.version }}
+            latest
+          version: ${{ steps.meta.outputs.version }}
+          context: hetrixtools-agent
+          # The base image has no single multi-arch manifest, so resolve it
+          # per-arch here. TODO: pin this tag (renovate) before relying on it
+          # for reproducible releases.
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
+          container-registry: ghcr.io
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          # Push only on a published release; branch pushes just build/validate.
+          push: ${{ github.event_name == 'release' }}
+          cosign: ${{ github.event_name == 'release' }}
