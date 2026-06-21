@@ -6,16 +6,14 @@ name: Build
     paths: ["hetrixtools-agent/**"]
   release:
     types: [published]
+permissions:
+  contents: read
 jobs:
-  build:
+  init:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write  # keyless cosign signing
-    strategy:
-      matrix:
-        arch: [aarch64, amd64]
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Read app version
@@ -24,23 +22,43 @@ jobs:
           version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
             | sed -E 's/.*"([^"]+)".*/\1/')"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.06.0
+        with:
+          architectures: '["amd64", "aarch64"]'
+          image-name: hetrixtools-agent
+          registry-prefix: ghcr.io/owine
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: init
+    # Native per-arch runners (ubuntu-24.04 / ubuntu-24.04-arm) from the matrix:
+    # build-image has no QEMU/platforms, so each arch builds on its own runner.
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write  # keyless cosign signing
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Build & push ${{ matrix.arch }}
         uses: home-assistant/builder/actions/build-image@2026.06.0
         with:
           arch: ${{ matrix.arch }}
-          image: ghcr.io/owine/hetrixtools-agent-${{ matrix.arch }}
+          image: ${{ matrix.image }}
           image-tags: |
-            ${{ steps.meta.outputs.version }}
+            ${{ needs.init.outputs.version }}
             latest
-          version: ${{ steps.meta.outputs.version }}
+          version: ${{ needs.init.outputs.version }}
           context: hetrixtools-agent
-          # The base image has no single multi-arch manifest, so resolve it
-          # per-arch here. TODO: pin this tag (renovate) before relying on it
-          # for reproducible releases.
+          # Per-arch base; builds natively on the matching runner.
+          # TODO: pin this tag (renovate) before relying on it for releases.
           build-args: |
             BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
-          container-registry: ghcr.io
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
-          # Push only on a published release; branch pushes just build/validate.
+          # Push/sign only on a published release; branch pushes just build.
           push: ${{ github.event_name == 'release' }}
           cosign: ${{ github.event_name == 'release' }}

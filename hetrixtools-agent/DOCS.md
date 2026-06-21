@@ -69,7 +69,7 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 
 **No data in HetrixTools after a few minutes:** Check that your `sid` is correct (exactly 32 alphanumeric characters). Enable `dry_run`, restart the app, and check the **Log** tab. You should see the payload that would be sent to HetrixTools. If the payload looks correct, disable `dry_run` and restart again.
 
-**App fails to start:** Check that `sid` matches the 32-character pattern. An invalid SID will prevent the app from starting.
+**App fails to start:** Check that `sid` matches the 32-character pattern. An invalid SID stops the agent before it sends anything, and because the service is supervised you will see the start failure repeat in the **Log** tab until you correct the SID.
 
 **Metrics are missing or zero:** Some metrics require specific hardware support. If a metric is absent from HetrixTools but you expect it, enable `dry_run` and inspect the log to see what the agent is collecting locally.
 

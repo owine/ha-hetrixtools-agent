@@ -33,7 +33,11 @@ fi
 
 bashio::log.info "Starting HetrixTools agent loop (SID ${SID:0:6}…)."
 
-# --- loop with crash-loop guard: each cycle ~60s; backfill if it returns early ---
+# --- agent loop ---
+# The agent self-paces each invocation to ~60s (it samples for a minute, then
+# POSTs once). collect_every_seconds changes sample granularity, NOT the POST
+# interval. The sleep below is only a crash-loop backstop: if a cycle exits
+# early, backfill the rest of the minute so a broken agent can't hammer the API.
 while true; do
 	start=$(date +%s)
 	bash "$RUN_DIR/hetrixtools_agent.sh" || bashio::log.warning "agent cycle exited non-zero"
