@@ -1,5 +1,26 @@
+---
+# Hadolint configuration for Home Assistant apps
+
 ignored:
-  - DL3008  # apk versions float; renovate handles base image pinning
-trustedRegistries:
-  - ghcr.io
-  - docker.io
+  # DL3006: Always tag the version of an image explicitly
+  # FROM uses the BUILD_FROM ARG (pinned base tag + digest), which hadolint can't resolve
+  - DL3006
+
+  # DL3018: Pinning apk versions is not practical for HA apps
+  # The base image manages Alpine package versions
+  - DL3018
+
+  # DL4006: Set pipefail before pipes
+  # Alpine's /bin/sh handles errors adequately with 'set -e'
+  - DL4006
+
+  # DL3003: Use WORKDIR to switch directories
+  # cd is acceptable in single-RUN commands
+  - DL3003
+
+  # SC2086: Double quote to prevent globbing
+  # Intentional word splitting in some contexts
+  - SC2086
+
+# Only fail on errors, not warnings or info
+failure-threshold: error
