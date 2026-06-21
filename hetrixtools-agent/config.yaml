@@ -4,7 +4,7 @@ description: "Runs the HetrixTools server monitoring agent to report this Home A
 version: "0.1.0" # x-release-please-version
 slug: "hetrixtools_agent"
 init: false
-image: "ghcr.io/owine/{arch}-hetrixtools-agent"
+image: "ghcr.io/owine/hetrixtools-agent"
 
 arch:
   - aarch64

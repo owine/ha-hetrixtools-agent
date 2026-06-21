@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   init:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       version: ${{ steps.meta.outputs.version }}
@@ -60,3 +60,23 @@ jobs:
           # Push/sign only on a published release; branch pushes just build.
           push: ${{ github.event_name == 'release' }}
           cosign: ${{ github.event_name == 'release' }}
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [init, build]
+    # Only on a release: combine the per-arch images pushed above into the single
+    # multi-arch manifest that config.yaml's `image:` points at (no {arch}).
+    if: github.event_name == 'release'
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+      id-token: write  # keyless cosign signing of the manifest
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          architectures: '["amd64", "aarch64"]'
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: hetrixtools-agent
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
