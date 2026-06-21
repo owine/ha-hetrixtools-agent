@@ -1,0 +1,44 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+set -e
+
+LIB=/usr/lib/hetrixtools
+RUN_DIR=/run/hetrixtools
+
+# --- validate SID (fail fast, clear message) ---
+SID="$(bashio::config 'sid')"
+if [[ ! "$SID" =~ ^[A-Za-z0-9]{32}$ ]]; then
+	bashio::exit.nok "Invalid or missing 'sid' (need a 32-char HetrixTools Server ID)."
+fi
+
+# --- render cfg next to a working copy of the agent ---
+mkdir -p "$RUN_DIR"
+cp "$LIB/hetrixtools_agent.sh" "$RUN_DIR/hetrixtools_agent.sh"
+
+export SID
+export COLLECT_EVERY_SECONDS; COLLECT_EVERY_SECONDS="$(bashio::config 'collect_every_seconds')"
+export CHECK_DRIVE_HEALTH;    CHECK_DRIVE_HEALTH="$(bashio::config 'check_drive_health' | grep -q true && echo 1 || echo 0)"
+export CHECK_SOFT_RAID;       CHECK_SOFT_RAID="$(bashio::config 'check_soft_raid' | grep -q true && echo 1 || echo 0)"
+export CHECK_REBOOT;          CHECK_REBOOT="$(bashio::config 'check_reboot' | grep -q true && echo 1 || echo 0)"
+export RUNNING_PROCESSES;     RUNNING_PROCESSES="$(bashio::config 'running_processes' | grep -q true && echo 1 || echo 0)"
+export CONNECTION_PORTS;      CONNECTION_PORTS="$(bashio::config 'connection_ports' | tr '\n' ',' | sed 's/,$//')"
+export CHECK_SERVICES;        CHECK_SERVICES="$(bashio::config 'check_services' | tr '\n' ',' | sed 's/,$//')"
+
+bash "$LIB/render-config.sh" "$RUN_DIR/hetrixtools.cfg"
+
+if bashio::config.true 'dry_run'; then
+	export DryRun=1
+	bashio::log.warning "dry_run enabled: payloads printed, not sent."
+fi
+
+bashio::log.info "Starting HetrixTools agent loop (SID ${SID:0:6}…)."
+
+# --- loop with crash-loop guard: each cycle ~60s; backfill if it returns early ---
+while true; do
+	start=$(date +%s)
+	bash "$RUN_DIR/hetrixtools_agent.sh" || bashio::log.warning "agent cycle exited non-zero"
+	elapsed=$(( $(date +%s) - start ))
+	if [ "$elapsed" -lt 55 ]; then
+		sleep $(( 60 - elapsed ))
+	fi
+done
