@@ -4,6 +4,11 @@ name: Lint
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:  # manual re-run lever if GitHub drops a pull_request event
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   lint:
     name: Lint all
