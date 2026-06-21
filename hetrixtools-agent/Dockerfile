@@ -26,4 +26,6 @@ LABEL \
     io.hass.description="Runs the HetrixTools server monitoring agent for this HA host" \
     io.hass.type="addon" \
     org.opencontainers.image.source="https://github.com/owine/ha-hetrixtools-agent"
+# x-release-please-start-version
 LABEL io.hass.version="0.1.0"
+# x-release-please-end

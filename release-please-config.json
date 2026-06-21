@@ -6,12 +6,7 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         "config.yaml",
-        {
-          "type": "generic",
-          "path": "Dockerfile",
-          "searchValue": "io.hass.version=\"{{version}}\"",
-          "replaceWith": "io.hass.version=\"{{version}}\""
-        }
+        "Dockerfile"
       ]
     }
   },
