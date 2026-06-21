@@ -3,12 +3,12 @@
 # WITHOUT depending on the HA supervisor (we invoke render + agent directly).
 set -euo pipefail
 
-BASE="ghcr.io/home-assistant/amd64-base:latest"
-# --platform linux/amd64 is required on Apple Silicon (arm64) hosts where the
-# HA base image has no arm64 manifest.
+# Build the amd64 slice of the multi-arch base pinned as the Dockerfile's
+# BUILD_FROM default (no --build-arg override), so this exercises the real base.
+# --platform linux/amd64 selects the amd64 manifest entry (also needed on Apple
+# Silicon hosts).
 docker build \
   --platform linux/amd64 \
-  --build-arg BUILD_FROM="$BASE" \
   -t hetrixtools-agent:smoke \
   hetrixtools-agent
 
