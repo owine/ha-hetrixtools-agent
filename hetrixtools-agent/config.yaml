@@ -1,28 +1,23 @@
----
-name: "HetrixTools Agent"
-description: "Runs the HetrixTools server monitoring agent to report this Home Assistant host to HetrixTools"
-version: "0.1.0" # x-release-please-version
-slug: "hetrixtools_agent"
+name: HetrixTools Agent
+description: >-
+  Runs the HetrixTools server monitoring agent to report this Home Assistant
+  host to HetrixTools
+version: 0.1.0
+slug: hetrixtools_agent
 init: false
-image: "ghcr.io/owine/{arch}-hetrixtools-agent"
-
+image: ghcr.io/owine/{arch}-hetrixtools-agent
 arch:
   - aarch64
   - amd64
-
-url: "https://github.com/owine/ha-hetrixtools-agent"
-
+url: https://github.com/owine/ha-hetrixtools-agent
 startup: services
 boot: auto
-
-# Host visibility: report the real HA OS host, not the container.
 full_access: true
 host_network: true
 host_pid: true
 udev: true
-
 options:
-  sid: ""
+  sid: ''
   collect_every_seconds: 3
   check_drive_health: false
   check_soft_raid: false
@@ -31,16 +26,15 @@ options:
   connection_ports: []
   check_services: []
   dry_run: false
-
 schema:
-  sid: "match(^[A-Za-z0-9]{32}$)"
-  collect_every_seconds: "int(1,60)"
-  check_drive_health: "bool"
-  check_soft_raid: "bool"
-  check_reboot: "bool"
-  running_processes: "bool"
+  sid: match(^[A-Za-z0-9]{32}$)
+  collect_every_seconds: int(1,60)
+  check_drive_health: bool
+  check_soft_raid: bool
+  check_reboot: bool
+  running_processes: bool
   connection_ports:
-    - "str"
+    - str
   check_services:
-    - "str"
-  dry_run: "bool"
+    - str
+  dry_run: bool
