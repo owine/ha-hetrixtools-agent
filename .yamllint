@@ -1,7 +1,36 @@
+---
 extends: default
+
 rules:
+  # GH Actions SHA pins and HA descriptions routinely exceed 120 chars
   line-length:
-    max: 120
-  document-start: disable
+    max: 150
+    level: warning
+
+  # Home Assistant uses 2-space indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Be flexible with comments
   comments:
     min-spaces-from-content: 1
+    level: warning
+
+  # Allow empty values (common in HA config)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Document start (---) is optional — most GH Actions workflows omit it
+  document-start: disable
+
+  # Trailing spaces should be warnings, not errors
+  trailing-spaces:
+    level: warning
+
+  # Truthy values (yes/no vs true/false)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+    level: warning
