@@ -3,6 +3,7 @@
     "hetrixtools-agent": {
       "release-type": "simple",
       "package-name": "hetrixtools-agent",
+      "release-as": "0.1.0",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         "config.yaml",
