@@ -6,23 +6,32 @@ name: Lint
   pull_request:
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    name: Lint all
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      # shellcheck and yamllint are pre-installed on the ubuntu-24.04 runner image,
+      # so they are invoked directly rather than reinstalled.
       - name: shellcheck
         run: |
-          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck --version
           shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/render-config.sh
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
+          shellcheck tests/smoke.sh
       - name: hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: hetrixtools-agent/Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: error
       - name: yamllint
         run: |
-          sudo apt-get install -y yamllint
+          yamllint --version
           yamllint hetrixtools-agent/config.yaml repository.yaml .github
+      # bats is not part of the runner image; install only if it is missing.
       - name: bats
         run: |
-          sudo apt-get install -y bats
+          command -v bats >/dev/null || {
+            sudo apt-get update && sudo apt-get install -y bats
+          }
           bats tests/render-config.bats tests/dry-run.bats
