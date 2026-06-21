@@ -1,0 +1,28 @@
+---
+name: Lint
+"on":
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/render-config.sh
+          shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: hetrixtools-agent/Dockerfile
+      - name: yamllint
+        run: |
+          sudo apt-get install -y yamllint
+          yamllint hetrixtools-agent/config.yaml repository.yaml .github
+      - name: bats
+        run: |
+          sudo apt-get install -y bats
+          bats tests/render-config.bats tests/dry-run.bats

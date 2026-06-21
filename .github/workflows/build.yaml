@@ -1,0 +1,34 @@
+---
+name: Build
+"on":
+  push:
+    branches: [main]
+    paths: ["hetrixtools-agent/**"]
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        arch: [aarch64, amd64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push ${{ matrix.arch }}
+        uses: home-assistant/builder@master
+        with:
+          args: |
+            --${{ matrix.arch }} \
+            --target /data/hetrixtools-agent \
+            --image "hetrixtools-agent-{arch}" \
+            --docker-hub "ghcr.io/owine" \
+            --addon
