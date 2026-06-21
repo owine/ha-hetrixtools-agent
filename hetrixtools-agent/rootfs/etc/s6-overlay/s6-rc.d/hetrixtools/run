@@ -1,6 +1,6 @@
 #!/command/with-contenv bashio
 # shellcheck shell=bash
-set -e
+set -eo pipefail
 
 LIB=/usr/lib/hetrixtools
 RUN_DIR=/run/hetrixtools
@@ -38,6 +38,10 @@ while true; do
 	start=$(date +%s)
 	bash "$RUN_DIR/hetrixtools_agent.sh" || bashio::log.warning "agent cycle exited non-zero"
 	elapsed=$(( $(date +%s) - start ))
+	# Guard against a backward clock step (NTP) yielding a negative duration.
+	if [ "$elapsed" -lt 0 ]; then
+		elapsed=0
+	fi
 	if [ "$elapsed" -lt 55 ]; then
 		sleep $(( 60 - elapsed ))
 	fi
