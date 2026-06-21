@@ -1,6 +1,7 @@
 # Home Assistant base image — multi-arch minimal Alpine; buildx selects the arch
-# per native-runner build. Pinned tag + digest; Renovate keeps the digest fresh.
-# For local testing, override with --build-arg BUILD_FROM=ghcr.io/home-assistant/base:3.24
+# per native-runner build. Pinned to a tag + digest (Renovate keeps the digest
+# current). For local testing you can override with a plain tag (no digest), e.g.
+#   --build-arg BUILD_FROM=ghcr.io/home-assistant/base:3.24
 ARG BUILD_FROM=ghcr.io/home-assistant/base:3.24@sha256:94ff231402a5e7ad2a82e261ad5fa4ffae7d7bb095c3febb2edbdf309c9b6aca
 FROM ${BUILD_FROM}
 
