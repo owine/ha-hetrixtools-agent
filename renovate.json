@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/hetrixtools-agent/upstream-agent.version/"],
+      "matchStrings": ["^(?<currentValue>.*)$"],
+      "depNameTemplate": "hetrixtools/agent",
+      "datasourceTemplate": "github-tags"
+    }
+  ]
+}

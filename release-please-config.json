@@ -1,0 +1,19 @@
+{
+  "packages": {
+    "hetrixtools-agent": {
+      "release-type": "simple",
+      "package-name": "hetrixtools-agent",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        "config.yaml",
+        {
+          "type": "generic",
+          "path": "Dockerfile",
+          "searchValue": "io.hass.version=\"{{version}}\"",
+          "replaceWith": "io.hass.version=\"{{version}}\""
+        }
+      ]
+    }
+  },
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
+}
