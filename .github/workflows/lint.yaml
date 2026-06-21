@@ -9,7 +9,7 @@ jobs:
     name: Lint all
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # shellcheck and yamllint are pre-installed on the ubuntu-24.04 runner image,
       # so they are invoked directly rather than reinstalled.
       - name: shellcheck

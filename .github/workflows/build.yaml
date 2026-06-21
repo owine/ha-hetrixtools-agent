@@ -15,7 +15,7 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Read app version
         id: meta
         run: |
@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build & push ${{ matrix.arch }}
         uses: home-assistant/builder/actions/build-image@2026.06.0
         with:
