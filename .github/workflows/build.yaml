@@ -8,6 +8,11 @@ name: Build
     types: [published]
 permissions:
   contents: read
+env:
+  # Single source of truth for the build matrix + image name (kept in sync
+  # across the matrix and the manifest job).
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: hetrixtools-agent
 jobs:
   init:
     runs-on: ubuntu-24.04
@@ -26,8 +31,8 @@ jobs:
         id: matrix
         uses: home-assistant/builder/actions/prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
         with:
-          architectures: '["amd64", "aarch64"]'
-          image-name: hetrixtools-agent
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
           registry-prefix: ghcr.io/owine
   build:
     name: Build ${{ matrix.arch }}
@@ -74,9 +79,9 @@ jobs:
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
         with:
-          architectures: '["amd64", "aarch64"]'
+          architectures: ${{ env.ARCHITECTURES }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
-          image-name: hetrixtools-agent
+          image-name: ${{ env.IMAGE_NAME }}
           image-tags: |
             ${{ needs.init.outputs.version }}
             latest
