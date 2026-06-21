@@ -130,32 +130,49 @@ grep -n 'sm.hetrixtools.net/v2' hetrixtools-agent/rootfs/usr/lib/hetrixtools/het
 grep -n 'load_config' hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh
 grep -n 'hetrixtools_update' hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh
 ```
-Expected: the `wget … https://sm.hetrixtools.net/v2/` line exists; `load_config "$ScriptPath"/hetrixtools.cfg` exists; **no** `hetrixtools_update` reference (confirms no self-update in this file — nothing to strip).
+Expected: the `wget … https://sm.hetrixtools.net/v2/` lines exist (two of them, inside the `DEBUG` if/else — see Step 3); `load_config "$ScriptPath"/hetrixtools.cfg` exists; **no** `hetrixtools_update` reference. Conclusion: **v2.4.1 has no self-update or scheduler code in this file — there is nothing to strip.** The only change we make is the Step 3 `dry_run` guard.
 
-- [ ] **Step 3: Add the `dry_run` guard around the POST**
+> Also note for later tasks: the agent does **not** validate that `SID` is non-empty — it will happily build a payload with an empty `SID` and only `exit 1` if the cfg file is missing entirely. Real SID validation is therefore done by the s6 run script (Task 5), not the agent.
 
-Locate the POST line:
+- [ ] **Step 3: Add the `dry_run` guard around the POST block**
+
+> IMPORTANT: in v2.4.1 the POST is **not** a single line. It lives inside a `DEBUG` if/else with **two** `wget` calls (a verbose debug variant and the quiet variant), immediately after the line that writes the payload: `echo "j=$jsoncomp" > "$ScriptPath"/hetrixtools_agent.log`. You must wrap the **whole `if [ "$DEBUG" -eq 1 ] … fi` block**, not one `wget` line. `DEBUG` is the agent's own cfg flag and is unrelated to our `dry_run` (render-config.sh never emits `DEBUG`, so it defaults to 0).
+
+The exact upstream block to wrap is:
 ```bash
-wget --retry-connrefused --waitretry=1 -t 3 -T 15 -qO- \
-  --post-file="$ScriptPath/hetrixtools_agent.log" \
-  $SecuredConnection https://sm.hetrixtools.net/v2/ &> /dev/null
-```
-Wrap it so a `DryRun` env var short-circuits the network call and prints the payload instead. Replace the POST block with:
-```bash
-if [ "${DryRun:-0}" = "1" ]; then
-	echo "[hetrixtools][dry_run] would POST payload:"
-	cat "$ScriptPath/hetrixtools_agent.log"
+if [ "$DEBUG" -eq 1 ]
+then
+	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json" >> "$ScriptPath"/debug.log
+	# Post data
+	echo -e "$ScriptStartTime-$(date +%T]) Posting data" >> "$ScriptPath"/debug.log
+	wget -v --debug --retry-connrefused --waitretry=1 -t 3 -T 15 -O- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &>> "$ScriptPath"/debug.log
+	echo -e "$ScriptStartTime-$(date +%T]) Data posted" >> "$ScriptPath"/debug.log
 else
-	wget --retry-connrefused --waitretry=1 -t 3 -T 15 -qO- \
-	  --post-file="$ScriptPath/hetrixtools_agent.log" \
-	  $SecuredConnection https://sm.hetrixtools.net/v2/ &> /dev/null
+	# Post data
+	wget --retry-connrefused --waitretry=1 -t 3 -T 15 -qO- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &> /dev/null
 fi
 ```
-Add a comment marker above it so future renovate re-vendors are easy to re-patch:
+
+Replace it with the same block guarded by an outer `dry_run` short-circuit and patch markers (the `j=`-prefixed payload is already on disk at `$ScriptPath/hetrixtools_agent.log`, so dry_run just prints it):
 ```bash
 # >>> ha-app patch: dry_run guard (re-apply after upstream bump) >>>
+if [ "${DryRun:-0}" = "1" ]; then
+	echo "[hetrixtools][dry_run] would POST payload (no network call):"
+	cat "$ScriptPath/hetrixtools_agent.log"
+elif [ "$DEBUG" -eq 1 ]
+then
+	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json" >> "$ScriptPath"/debug.log
+	# Post data
+	echo -e "$ScriptStartTime-$(date +%T]) Posting data" >> "$ScriptPath"/debug.log
+	wget -v --debug --retry-connrefused --waitretry=1 -t 3 -T 15 -O- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &>> "$ScriptPath"/debug.log
+	echo -e "$ScriptStartTime-$(date +%T]) Data posted" >> "$ScriptPath"/debug.log
+else
+	# Post data
+	wget --retry-connrefused --waitretry=1 -t 3 -T 15 -qO- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &> /dev/null
+fi
 # <<< ha-app patch <<<
 ```
+This guarantees neither POST branch can fire under `dry_run`, and the printed line literally starts with `j=` (satisfying the Task 4 assertion).
 
 - [ ] **Step 4: Lint the vendored script**
 
