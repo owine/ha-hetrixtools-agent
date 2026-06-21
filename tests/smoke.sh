@@ -12,7 +12,10 @@ docker build \
   -t hetrixtools-agent:smoke \
   hetrixtools-agent
 
-docker run --rm --platform linux/amd64 hetrixtools-agent:smoke bash -lc '
+# --entrypoint bash bypasses the base image's s6-overlay init so we test the
+# agent directly, without the supervised service trying (and failing) to reach
+# a non-existent HA Supervisor and cluttering the output.
+docker run --rm --platform linux/amd64 --entrypoint bash hetrixtools-agent:smoke -lc '
   set -e
   LIB=/usr/lib/hetrixtools
   export SID=abcdefghijklmnopqrstuvwxyz012345 COLLECT_EVERY_SECONDS=3
