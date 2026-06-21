@@ -9,7 +9,7 @@ jobs:
     name: Lint all
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.0
       # shellcheck and yamllint are pre-installed on the ubuntu-24.04 runner image,
       # so they are invoked directly rather than reinstalled.
       - name: shellcheck
@@ -19,7 +19,7 @@ jobs:
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
           shellcheck tests/smoke.sh
       - name: hadolint
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: hetrixtools-agent/Dockerfile
           config: .hadolint.yaml
