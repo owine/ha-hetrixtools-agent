@@ -19,7 +19,7 @@ jobs:
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
           shellcheck tests/smoke.sh
       - name: hadolint
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: hetrixtools-agent/Dockerfile
           config: .hadolint.yaml
