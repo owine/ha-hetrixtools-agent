@@ -1,0 +1,5 @@
+ignored:
+  - DL3008  # apk versions float; renovate handles base image pinning
+trustedRegistries:
+  - ghcr.io
+  - docker.io
