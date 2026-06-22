@@ -4,22 +4,8 @@
     "github>owine/renovate-config",
     "github>owine/renovate-config:automerge",
     "github>owine/renovate-config:docker",
-    "github>owine/renovate-config:alpine"
-  ],
-  "packageRules": [
-    {
-      "description": "Home Assistant base image — pin to a versioned tag with digest; Renovate keeps the digest updated",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["ghcr.io/home-assistant/base"],
-      "pinDigests": true,
-      "versioning": "loose"
-    },
-    {
-      "description": "home-assistant/builder uses CalVer (YYYY.MM.PATCH); the default github-actions versioning can't parse it",
-      "matchManagers": ["github-actions"],
-      "matchPackageNames": ["home-assistant/builder"],
-      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})\\.(?<patch>\\d+)$"
-    }
+    "github>owine/renovate-config:alpine",
+    "github>owine/renovate-config:home-assistant"
   ],
   "customManagers": [
     {
