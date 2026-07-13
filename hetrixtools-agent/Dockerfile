@@ -7,21 +7,28 @@ FROM ${BUILD_FROM}
 
 # Tools the HetrixTools agent shells out to (host-facing via full_access/udev).
 # GNU grep is required: the agent uses `grep -oP … \K` (PCRE) to extract host
-# IPv4/IPv6 addresses, which the base image's BusyBox grep cannot do.
-# hadolint ignore=DL3018
+# IPv4/IPv6 addresses, which the base image's BusyBox grep cannot do. procps-ng
+# likewise supplies the `ps -eo`/`vmstat` BusyBox lacks.
+#
+# Versions are pinned and kept current by Renovate via the Repology datasource
+# (see the customManager in renovate.json). Alpine's index keeps only the newest
+# build of each apk and purges the rest, so a drifted pin fails the build rather
+# than silently installing something stale — every pin must co-bump in one PR,
+# which is what the shared :alpine preset's grouping guarantees. When the base
+# image crosses a release line, update the alpine_3_24/ template to match.
 RUN apk add --no-cache \
-    bash \
-    coreutils \
-    grep \
-    curl \
-    wget \
-    procps \
-    util-linux \
-    iproute2 \
-    smartmontools \
-    nvme-cli \
-    lm-sensors \
-    mdadm
+    bash=5.3.9-r1 \
+    coreutils=9.11-r0 \
+    curl=8.21.0-r0 \
+    grep=3.12-r0 \
+    iproute2=7.0.0-r0 \
+    lm-sensors=3.6.0-r5 \
+    mdadm=4.3-r3 \
+    nvme-cli=2.16-r1 \
+    procps-ng=4.0.6-r0 \
+    smartmontools=7.5-r0 \
+    util-linux=2.42.1-r0 \
+    wget=1.25.0-r3
 
 COPY rootfs /
 
