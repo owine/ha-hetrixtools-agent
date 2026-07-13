@@ -15,6 +15,16 @@
       "matchStrings": ["^(?<currentValue>.*)$"],
       "depNameTemplate": "hetrixtools/agent",
       "datasourceTemplate": "github-tags"
+    },
+    {
+      "description": "Update pinned Alpine apk packages via Repology. IMPORTANT: bump the alpine version in depNameTemplate when the base image changes (e.g. alpine_3_24 -> alpine_3_25)",
+      "customType": "regex",
+      "managerFilePatterns": ["/^hetrixtools-agent/Dockerfile$/"],
+      "matchStringsStrategy": "any",
+      "matchStrings": ["\\s\\s(?<package>[a-z0-9][a-z0-9-_]+)=(?<currentValue>[a-z0-9-_.]+)\\s+"],
+      "versioningTemplate": "loose",
+      "datasourceTemplate": "repology",
+      "depNameTemplate": "alpine_3_24/{{package}}"
     }
   ]
 }
