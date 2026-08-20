@@ -22,5 +22,12 @@ jobs:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
+          # NOTE: release-please-config.json sets changelog-sections at the top
+          # level so every package inherits it. That option REPLACES the default
+          # conventional-commits type map rather than merging into it, and any
+          # type absent from the map is discarded outright (not just hidden) --
+          # which is why Renovate's `deps:` commits rendered an empty changelog
+          # and were skipped as "no user facing commits". Add new commit types
+          # to that list or they will silently stop triggering releases.
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
