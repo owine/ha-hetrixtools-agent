@@ -1,7 +1,7 @@
 ---
 name: "HetrixTools Agent"
 description: "Runs the HetrixTools server monitoring agent to report this Home Assistant host to HetrixTools"
-version: "0.1.0" # x-release-please-version
+version: "0.1.1" # x-release-please-version
 slug: "hetrixtools_agent"
 init: false
 image: "ghcr.io/owine/hetrixtools-agent"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.0...hetrixtools-agent-v0.1.1) (2026-08-20)
+
+
+### Dependencies
+
+* update ghcr.io/home-assistant/base:3.24 docker digest to 93ef607 ([#28](https://github.com/owine/ha-hetrixtools-agent/issues/28)) ([526e27e](https://github.com/owine/ha-hetrixtools-agent/commit/526e27e3a21b38c93a4f1eeabd101c75ac83f83d))
+
 ## 0.1.0 (2026-06-21)
 
 Initial release: the HetrixTools monitoring agent as a Home Assistant app.
