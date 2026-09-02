@@ -19,7 +19,7 @@ FROM ${BUILD_FROM}
 RUN apk add --no-cache \
     bash=5.3.9-r1 \
     coreutils=9.11-r0 \
-    curl=8.21.0-r0 \
+    curl=8.22.0-r0 \
     grep=3.12-r0 \
     iproute2=7.0.0-r0 \
     lm-sensors=3.6.0-r5 \
