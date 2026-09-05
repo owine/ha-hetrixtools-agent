@@ -27,7 +27,7 @@ RUN apk add --no-cache \
     nvme-cli=2.16-r1 \
     procps-ng=4.0.6-r0 \
     smartmontools=7.5-r0 \
-    util-linux=2.42.3-r0 \
+    util-linux=2.42.3-r1 \
     wget=1.25.0-r3
 
 COPY rootfs /
