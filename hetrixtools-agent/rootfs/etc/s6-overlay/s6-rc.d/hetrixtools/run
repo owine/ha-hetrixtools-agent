@@ -24,6 +24,19 @@ export RUNNING_PROCESSES;     RUNNING_PROCESSES="$(bashio::config 'running_proce
 export CONNECTION_PORTS;      CONNECTION_PORTS="$(bashio::config 'connection_ports' | tr '\n' ',' | sed 's/,$//')"
 export CHECK_SERVICES;        CHECK_SERVICES="$(bashio::config 'check_services' | tr '\n' ',' | sed 's/,$//')"
 
+# Pin the agent to real host NICs. Left unset, the agent auto-detects once per
+# invocation and sweeps up Docker's ephemeral veth* interfaces, which vanish
+# mid-sample and turn the log into awk syntax errors. If detection yields
+# nothing we pass an empty value, which the agent reads as "auto-detect" -- the
+# same behaviour as before, so a host we fail to classify is never left unmonitored.
+export NETWORK_INTERFACES
+NETWORK_INTERFACES="$(ip a 2>/dev/null | bash "$LIB/detect-interfaces.sh" || true)"
+if [ -n "$NETWORK_INTERFACES" ]; then
+	bashio::log.info "Monitoring network interfaces: ${NETWORK_INTERFACES}"
+else
+	bashio::log.warning "No host network interfaces detected; falling back to agent auto-detection."
+fi
+
 bash "$LIB/render-config.sh" "$RUN_DIR/hetrixtools.cfg"
 
 if bashio::config.true 'dry_run'; then

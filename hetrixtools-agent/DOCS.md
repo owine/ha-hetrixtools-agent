@@ -63,6 +63,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 
 **`check_services`:** Service checking uses pgrep-style process name matching. It does not query host systemd, so it cannot tell you whether a systemd unit is active — only whether a process with a matching name is running.
 
+**Network interfaces:** The app reports only real host NICs. Home Assistant runs its add-ons under Docker, which creates and destroys `veth*` interfaces constantly; left to its own devices the agent detects interfaces once per cycle and then samples that list for the following minute, so container interfaces that disappear mid-cycle both corrupt the per-NIC traffic figures and fill the log with `awk` syntax errors. The app therefore detects the host's own interfaces at startup and passes them to the agent explicitly, excluding `veth*`, `br-*`, `docker*`, `hassio` and `virbr*`. The interfaces chosen are printed in the **Log** tab when the app starts. Because detection happens at startup, a NIC added to the host later is picked up on the next restart.
+
 **Missing tools:** If a required helper tool (e.g. `smartctl`, `mdadm`) is not present, the corresponding metric is skipped rather than causing a crash.
 
 ## Troubleshooting
@@ -70,6 +72,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 **No data in HetrixTools after a few minutes:** Check that your `sid` is correct (exactly 32 alphanumeric characters). Enable `dry_run`, restart the app, and check the **Log** tab. You should see the payload that would be sent to HetrixTools. If the payload looks correct, disable `dry_run` and restart again.
 
 **App fails to start:** Check that `sid` matches the 32-character pattern. An invalid SID stops the agent before it sends anything, and because the service is supervised you will see the start failure repeat in the **Log** tab until you correct the SID.
+
+**Network traffic looks wrong, or the log is full of `awk` errors:** Older versions let the agent auto-detect interfaces and so included Docker's `veth*` pairs. Restart the app and check the **Log** tab for the `Monitoring network interfaces:` line — it should list your host NIC (commonly `end0` or `eth0`), not `veth*` entries. If it instead warns that no interfaces were detected, the agent falls back to its own auto-detection and the old behaviour returns; please open an issue with your `ip a` output.
 
 **Metrics are missing or zero:** Some metrics require specific hardware support. If a metric is absent from HetrixTools but you expect it, enable `dry_run` and inspect the log to see what the agent is collecting locally.
 

@@ -19,4 +19,5 @@ CheckDriveHealth=${CHECK_DRIVE_HEALTH:-0}
 CheckReboot=${CHECK_REBOOT:-0}
 RunningProcesses=${RUNNING_PROCESSES:-0}
 ConnectionPorts="${CONNECTION_PORTS:-}"
+NetworkInterfaces="${NETWORK_INTERFACES:-}"
 EOF

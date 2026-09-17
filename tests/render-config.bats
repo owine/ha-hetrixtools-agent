@@ -17,6 +17,8 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *'CollectEveryXSeconds=3'* ]]
   [[ "$output" == *'CheckDriveHealth=0'* ]]
   [[ "$output" == *'ConnectionPorts=""'* ]]
+  # Empty is meaningful: the agent reads it as "auto-detect interfaces".
+  [[ "$output" == *'NetworkInterfaces=""'* ]]
 }
 
 @test "maps booleans and lists" {
@@ -24,6 +26,7 @@ teardown() { rm -rf "$TMP"; }
   COLLECT_EVERY_SECONDS=5 \
   CHECK_DRIVE_HEALTH=1 CHECK_SOFT_RAID=1 CHECK_REBOOT=0 RUNNING_PROCESSES=1 \
   CONNECTION_PORTS="80,443" CHECK_SERVICES="ssh,cron" \
+  NETWORK_INTERFACES="end0,wlan0" \
     bash "$RENDER" "$CFG"
   run cat "$CFG"
   [ "$status" -eq 0 ]
@@ -32,6 +35,7 @@ teardown() { rm -rf "$TMP"; }
   [[ "$output" == *'RunningProcesses=1'* ]]
   [[ "$output" == *'ConnectionPorts="80,443"'* ]]
   [[ "$output" == *'CheckServices="ssh,cron"'* ]]
+  [[ "$output" == *'NetworkInterfaces="end0,wlan0"'* ]]
 }
 
 @test "fails when SID missing" {
