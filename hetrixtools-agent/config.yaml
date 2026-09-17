@@ -31,6 +31,8 @@ options:
   connection_ports: []
   check_services: []
   ignored_disks: ""
+  outgoing_pings: []
+  outgoing_pings_count: 20
   dry_run: false
   debug: false
 
@@ -46,5 +48,8 @@ schema:
   check_services:
     - "str"
   ignored_disks: "str?"
+  outgoing_pings:
+    - "str"
+  outgoing_pings_count: "int(10,40)"
   dry_run: "bool"
   debug: "bool"

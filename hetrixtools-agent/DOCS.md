@@ -56,6 +56,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 | `dry_run` | boolean | `false` | Print collected payloads to the app log instead of sending them to HetrixTools. Useful for debugging. |
 | `ignored_disks` | string | *(see below)* | Extended-regex of `df` lines to exclude from disk reporting. Empty uses the default `tmpfs|aufs|squashfs|container_tmp|^overlay`. |
 | `debug` | boolean | `false` | Echo the agent's internal diagnostics to the app log after each cycle. Verbose; enable only while investigating. |
+| `outgoing_pings` | list of strings | `[]` | Latency targets, each `name,host` or `name,host,port`. With a port the agent runs a TCP probe instead of ICMP. |
+| `outgoing_pings_count` | integer (10–40) | `20` | Probes sent per target per cycle. |
 
 ## HA OS caveats
 
@@ -68,6 +70,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 **Network interfaces:** The app reports only real host NICs. Home Assistant runs its add-ons under Docker, which creates and destroys `veth*` interfaces constantly; left to its own devices the agent detects interfaces once per cycle and then samples that list for the following minute, so container interfaces that disappear mid-cycle both corrupt the per-NIC traffic figures and fill the log with `awk` syntax errors. The app therefore detects the host's own interfaces at startup and passes them to the agent explicitly, excluding `veth*`, `br-*`, `docker*`, `hassio` and `virbr*`. The interfaces chosen are printed in the **Log** tab when the app starts. Because detection happens at startup, a NIC added to the host later is picked up on the next restart.
 
 **Disk reporting:** Add-ons run under Docker's overlay2 storage driver, so the container's own root filesystem appears in `df` as an `overlay` mount. The default `ignored_disks` filter excludes it, along with the filesystem types the agent already skips, so only real host storage is reported. If you override the option, carry the defaults forward — the value replaces the filter rather than adding to it. The pattern is matched against whole `df` lines, which is why `^overlay` is anchored: an unanchored term would also drop a genuine disk mounted at a path containing that word. An invalid regex disables filtering entirely rather than failing the app.
+
+**Outgoing pings:** Each entry is `name,host` (ICMP) or `name,host,port` (TCP connect probe). `name` may contain letters, digits, `.`, `_` and `-`; `host` may be a hostname or an IP. For example, `["gateway,192.168.1.1", "dns,1.1.1.1", "api,example.com,443"]`. Targets are probed once per cycle and reported to HetrixTools as packet loss and average latency. ICMP probes need the app's privileged access to open raw sockets; if a target shows total loss but is reachable from the host, try the TCP form with a port.
 
 **Missing tools:** If a required helper tool (e.g. `smartctl`, `mdadm`) is not present, the corresponding metric is skipped rather than causing a crash.
 
