@@ -54,6 +54,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 | `connection_ports` | list of strings | `[]` | Ports to check for active connections (e.g. `["80", "443"]`). |
 | `check_services` | list of strings | `[]` | Service names to check. Uses pgrep-style process name matching, not host systemd. |
 | `dry_run` | boolean | `false` | Print collected payloads to the app log instead of sending them to HetrixTools. Useful for debugging. |
+| `ignored_disks` | string | *(see below)* | Extended-regex of `df` lines to exclude from disk reporting. Empty uses the default `tmpfs|aufs|squashfs|container_tmp|^overlay`. |
+| `debug` | boolean | `false` | Echo the agent's internal diagnostics to the app log after each cycle. Verbose; enable only while investigating. |
 
 ## HA OS caveats
 
@@ -65,6 +67,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 
 **Network interfaces:** The app reports only real host NICs. Home Assistant runs its add-ons under Docker, which creates and destroys `veth*` interfaces constantly; left to its own devices the agent detects interfaces once per cycle and then samples that list for the following minute, so container interfaces that disappear mid-cycle both corrupt the per-NIC traffic figures and fill the log with `awk` syntax errors. The app therefore detects the host's own interfaces at startup and passes them to the agent explicitly, excluding `veth*`, `br-*`, `docker*`, `hassio` and `virbr*`. The interfaces chosen are printed in the **Log** tab when the app starts. Because detection happens at startup, a NIC added to the host later is picked up on the next restart.
 
+**Disk reporting:** Add-ons run under Docker's overlay2 storage driver, so the container's own root filesystem appears in `df` as an `overlay` mount. The default `ignored_disks` filter excludes it, along with the filesystem types the agent already skips, so only real host storage is reported. If you override the option, carry the defaults forward — the value replaces the filter rather than adding to it. The pattern is matched against whole `df` lines, which is why `^overlay` is anchored: an unanchored term would also drop a genuine disk mounted at a path containing that word. An invalid regex disables filtering entirely rather than failing the app.
+
 **Missing tools:** If a required helper tool (e.g. `smartctl`, `mdadm`) is not present, the corresponding metric is skipped rather than causing a crash.
 
 ## Troubleshooting
@@ -74,6 +78,8 @@ After the first data collection cycle, give HetrixTools up to about two minutes 
 **App fails to start:** Check that `sid` matches the 32-character pattern. An invalid SID stops the agent before it sends anything, and because the service is supervised you will see the start failure repeat in the **Log** tab until you correct the SID.
 
 **Network traffic looks wrong, or the log is full of `awk` errors:** Older versions let the agent auto-detect interfaces and so included Docker's `veth*` pairs. Restart the app and check the **Log** tab for the `Monitoring network interfaces:` line — it should list your host NIC (commonly `end0` or `eth0`), not `veth*` entries. If it instead warns that no interfaces were detected, the agent falls back to its own auto-detection and the old behaviour returns; please open an issue with your `ip a` output.
+
+**Disks you do not recognise, or a missing disk:** Check `ignored_disks`. An empty value means the default filter; a custom value replaces it outright, so a disk you expect may simply be matched by your own pattern, and one you do not expect may be the container overlay reappearing because the default was overridden without carrying `^overlay` forward.
 
 **Metrics are missing or zero:** Some metrics require specific hardware support. If a metric is absent from HetrixTools but you expect it, enable `dry_run` and inspect the log to see what the agent is collecting locally.
 

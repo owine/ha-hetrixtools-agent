@@ -30,7 +30,9 @@ options:
   running_processes: false
   connection_ports: []
   check_services: []
+  ignored_disks: ""
   dry_run: false
+  debug: false
 
 schema:
   sid: "match(^[A-Za-z0-9]{32}$)"
@@ -43,4 +45,6 @@ schema:
     - "str"
   check_services:
     - "str"
+  ignored_disks: "str?"
   dry_run: "bool"
+  debug: "bool"
