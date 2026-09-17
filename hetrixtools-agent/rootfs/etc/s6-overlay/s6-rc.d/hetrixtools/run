@@ -23,6 +23,10 @@ export CHECK_REBOOT;          CHECK_REBOOT="$(bashio::config 'check_reboot' | gr
 export RUNNING_PROCESSES;     RUNNING_PROCESSES="$(bashio::config 'running_processes' | grep -q true && echo 1 || echo 0)"
 export CONNECTION_PORTS;      CONNECTION_PORTS="$(bashio::config 'connection_ports' | tr '\n' ',' | sed 's/,$//')"
 export CHECK_SERVICES;        CHECK_SERVICES="$(bashio::config 'check_services' | tr '\n' ',' | sed 's/,$//')"
+# Empty means "use the renderer's default", which excludes the container's own
+# overlay root as well as the filesystem types upstream already skips.
+export IGNORED_DISKS;         IGNORED_DISKS="$(bashio::config 'ignored_disks')"
+export DEBUG_MODE;            DEBUG_MODE="$(bashio::config 'debug' | grep -q true && echo 1 || echo 0)"
 
 # Pin the agent to real host NICs. Left unset, the agent auto-detects once per
 # invocation and sweeps up Docker's ephemeral veth* interfaces, which vanish
@@ -39,6 +43,10 @@ fi
 
 bash "$LIB/render-config.sh" "$RUN_DIR/hetrixtools.cfg"
 
+if bashio::config.true 'debug'; then
+	bashio::log.info "debug enabled: agent diagnostics will be echoed after each cycle."
+fi
+
 if bashio::config.true 'dry_run'; then
 	export DryRun=1
 	bashio::log.warning "dry_run enabled: payloads printed, not sent."
@@ -54,6 +62,13 @@ bashio::log.info "Starting HetrixTools agent loop (SID ${SID:0:6}…)."
 while true; do
 	start=$(date +%s)
 	bash "$RUN_DIR/hetrixtools_agent.sh" || bashio::log.warning "agent cycle exited non-zero"
+	# The agent writes diagnostics to a file beside itself, on tmpfs, where the
+	# Log tab never sees them. Surface each cycle's worth and truncate, so the
+	# log cannot grow without bound across a long-running debug session.
+	if [ -s "$RUN_DIR/debug.log" ]; then
+		cat "$RUN_DIR/debug.log"
+		: > "$RUN_DIR/debug.log"
+	fi
 	elapsed=$(( $(date +%s) - start ))
 	# Guard against a backward clock step (NTP) yielding a negative duration.
 	if [ "$elapsed" -lt 0 ]; then
