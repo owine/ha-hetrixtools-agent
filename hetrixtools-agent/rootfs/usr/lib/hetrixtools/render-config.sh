@@ -31,4 +31,6 @@ ConnectionPorts="${CONNECTION_PORTS:-}"
 NetworkInterfaces="${NETWORK_INTERFACES:-}"
 IgnoredDisks="${IGNORED_DISKS:-$DEFAULT_IGNORED_DISKS}"
 DEBUG=${DEBUG_MODE:-0}
+OutgoingPings="${OUTGOING_PINGS:-}"
+OutgoingPingsCount=${OUTGOING_PINGS_COUNT:-20}
 EOF

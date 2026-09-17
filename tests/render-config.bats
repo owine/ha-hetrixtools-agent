@@ -23,6 +23,20 @@ teardown() { rm -rf "$TMP"; }
   # Carries upstream's own four terms forward, since setting IgnoredDisks
   # replaces the agent's default rather than extending it.
   [[ "$output" == *'IgnoredDisks="tmpfs|aufs|squashfs|container_tmp|^overlay"'* ]]
+  [[ "$output" == *'OutgoingPings=""'* ]]
+  [[ "$output" == *'OutgoingPingsCount=20'* ]]
+}
+
+@test "renders ping targets separated by pipe, preserving commas within an entry" {
+  # Entries are name,host[,port]; only the entry separator is a pipe.
+  SID="abcdefghijklmnopqrstuvwxyz012345" \
+  OUTGOING_PINGS="gw,192.168.1.1|dns,1.1.1.1|web,example.com,443" \
+  OUTGOING_PINGS_COUNT=30 \
+    bash "$RENDER" "$CFG"
+  run cat "$CFG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'OutgoingPings="gw,192.168.1.1|dns,1.1.1.1|web,example.com,443"'* ]]
+  [[ "$output" == *'OutgoingPingsCount=30'* ]]
 }
 
 @test "default disk filter is a valid extended regex" {

@@ -27,6 +27,11 @@ export CHECK_SERVICES;        CHECK_SERVICES="$(bashio::config 'check_services' 
 # overlay root as well as the filesystem types upstream already skips.
 export IGNORED_DISKS;         IGNORED_DISKS="$(bashio::config 'ignored_disks')"
 export DEBUG_MODE;            DEBUG_MODE="$(bashio::config 'debug' | grep -q true && echo 1 || echo 0)"
+# The agent separates ping targets with '|', not ','; each entry is
+# name,host[,port] and may legitimately contain commas, so only the entry
+# separator is substituted here.
+export OUTGOING_PINGS;        OUTGOING_PINGS="$(bashio::config 'outgoing_pings' | tr '\n' '|' | sed 's/|$//')"
+export OUTGOING_PINGS_COUNT;  OUTGOING_PINGS_COUNT="$(bashio::config 'outgoing_pings_count')"
 
 # Pin the agent to real host NICs. Left unset, the agent auto-detects once per
 # invocation and sweeps up Docker's ephemeral veth* interfaces, which vanish
