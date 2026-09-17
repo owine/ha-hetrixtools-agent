@@ -10,12 +10,13 @@ FROM ${BUILD_FROM}
 # IPv4/IPv6 addresses, which the base image's BusyBox grep cannot do. procps-ng
 # likewise supplies the `ps -eo`/`vmstat` BusyBox lacks.
 #
-# Versions are pinned and kept current by Renovate via the Repology datasource
-# (see the customManager in renovate.json). Alpine's index keeps only the newest
-# build of each apk and purges the rest, so a drifted pin fails the build rather
-# than silently installing something stale — every pin must co-bump in one PR,
-# which is what the shared :alpine preset's grouping guarantees. When the base
-# image crosses a release line, update the alpine_3_24/ template to match.
+# Versions are pinned and kept current by Renovate, which extracts these
+# `apk add` pins natively (datasource `apk`). Alpine's index keeps only the
+# newest build of each apk and purges the rest, so a drifted pin fails the build
+# rather than silently installing something stale — every pin must co-bump in
+# one PR, which is what the shared :alpine preset's grouping guarantees. When
+# the base image crosses a release line, update the `branch=v3.24` in
+# renovate.json's apk registryUrls to match.
 RUN apk add --no-cache \
     bash=5.3.9-r1 \
     coreutils=9.11-r0 \
