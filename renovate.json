@@ -15,17 +15,13 @@
       "matchStrings": ["^(?<currentValue>.*)$"],
       "depNameTemplate": "hetrixtools/agent",
       "datasourceTemplate": "github-tags"
-    },
+    }
+  ],
+  "packageRules": [
     {
-      "description": "Update pinned Alpine apk packages via the custom.alpine CDN datasource. IMPORTANT: bump the alpine version in depNameTemplate when the base image changes (e.g. alpine_3_24 -> alpine_3_25); it drives both the depName and the registry URL. All pins here live in the Alpine main repository; a package from community would be SILENTLY untracked without a registryUrls packageRule. See owine/renovate-config README.",
-      "customType": "regex",
-      "managerFilePatterns": ["/^hetrixtools-agent/Dockerfile$/"],
-      "matchStringsStrategy": "any",
-      "matchStrings": ["\\s\\s(?<package>[a-z0-9][a-z0-9-_]+)=(?<currentValue>[a-z0-9-_.]+)\\s+"],
-      "versioningTemplate": "loose",
-      "datasourceTemplate": "custom.alpine",
-      "extractVersionTemplate": "^{{{package}}}-(?<version>\\d.*)\\.apk$",
-      "depNameTemplate": "alpine_3_24/{{package}}"
+      "description": "Alpine apk pins are extracted by Renovate's built-in dockerfile manager (>= 44.97.1) as datasource `apk`; the :alpine preset supplies the grouping, rangeStrategy and automerge posture but stays release-line agnostic, so this URL is the ONE place the Alpine release line is written. Bump `branch=v3.24` when the base image crosses a release line (3.24 -> 3.25). `components=main,community` merges both indexes in a single lookup (registryStrategy 'merge'), so community packages need no separate registryUrls override.",
+      "matchDatasources": ["apk"],
+      "registryUrls": ["https://dl-cdn.alpinelinux.org/alpine?branch=v3.24&components=main,community&arch=x86_64"]
     }
   ]
 }
