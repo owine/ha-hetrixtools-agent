@@ -21,6 +21,7 @@ jobs:
         run: |
           shellcheck --version
           shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/render-config.sh
+          shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/detect-interfaces.sh
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
           shellcheck tests/smoke.sh
       - name: hadolint
@@ -39,4 +40,4 @@ jobs:
           command -v bats >/dev/null || {
             sudo apt-get update && sudo apt-get install -y bats
           }
-          bats tests/render-config.bats tests/dry-run.bats
+          bats tests/render-config.bats tests/detect-interfaces.bats tests/dry-run.bats
