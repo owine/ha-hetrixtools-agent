@@ -10,6 +10,11 @@ FROM ${BUILD_FROM}
 # IPv4/IPv6 addresses, which the base image's BusyBox grep cannot do. procps-ng
 # likewise supplies the `ps -eo`/`vmstat` BusyBox lacks.
 #
+# iputils-ping replaces BusyBox's ping: the agent parses latency from an
+# `rtt min/avg/max/mdev` line, which only iputils emits. BusyBox prints
+# `round-trip min/avg/max` instead, so outgoing ping targets would report a
+# plausible-looking 0 ms rather than failing visibly.
+#
 # Versions are pinned and kept current by Renovate, which extracts these
 # `apk add` pins natively (datasource `apk`). Alpine's index keeps only the
 # newest build of each apk and purges the rest, so a drifted pin fails the build
@@ -23,6 +28,7 @@ RUN apk add --no-cache \
     curl=8.22.0-r0 \
     grep=3.12-r0 \
     iproute2=7.0.0-r0 \
+    iputils-ping=20250605-r2 \
     lm-sensors=3.6.0-r5 \
     mdadm=4.3-r3 \
     nvme-cli=2.16-r1 \
