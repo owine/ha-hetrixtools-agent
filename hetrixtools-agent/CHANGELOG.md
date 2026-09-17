@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.2...hetrixtools-agent-v0.2.0) (2026-09-17)
+
+
+### Features
+
+* expose outgoing ping latency targets ([#41](https://github.com/owine/ha-hetrixtools-agent/issues/41)) ([ab41245](https://github.com/owine/ha-hetrixtools-agent/commit/ab412450b02db742562fc324f2e923770de1bb7e))
+
+
+### Bug Fixes
+
+* exclude the container overlay root from disk reporting, add debug option ([5681f34](https://github.com/owine/ha-hetrixtools-agent/commit/5681f341d472deb7be434e120c7c4d5fd84474f5))
+* report only host NICs, not Docker's ephemeral veth pairs ([acea8c6](https://github.com/owine/ha-hetrixtools-agent/commit/acea8c60133cb06617d511d3297b2e5411be75d3))
+
 ## [0.1.2](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.1...hetrixtools-agent-v0.1.2) (2026-09-17)
 
 
