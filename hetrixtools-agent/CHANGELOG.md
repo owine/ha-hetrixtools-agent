@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.1...hetrixtools-agent-v0.1.2) (2026-09-17)
+
+
+### Dependencies
+
+* update dependency alpine_3_24/curl to v8.22.0-r0 ([#32](https://github.com/owine/ha-hetrixtools-agent/issues/32)) ([5a22a4c](https://github.com/owine/ha-hetrixtools-agent/commit/5a22a4ccfa1e9339a0417ab0c2c19a997a332fe2))
+* update dependency alpine_3_24/util-linux to v2.42.3-r0 ([#34](https://github.com/owine/ha-hetrixtools-agent/issues/34)) ([cd05042](https://github.com/owine/ha-hetrixtools-agent/commit/cd050426bda5d7e6f0a7362b15f9a961262b4a71))
+* update dependency alpine_3_24/util-linux to v2.42.3-r1 ([#35](https://github.com/owine/ha-hetrixtools-agent/issues/35)) ([a92f3ea](https://github.com/owine/ha-hetrixtools-agent/commit/a92f3ea9f8da069285009f660830a7edccb4cc89))
+
 ## [0.1.1](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.0...hetrixtools-agent-v0.1.1) (2026-08-20)
 
 
