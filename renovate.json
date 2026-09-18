@@ -22,6 +22,21 @@
       "description": "Alpine apk pins are extracted by Renovate's built-in dockerfile manager (>= 44.96.0) as datasource `apk`; the :alpine preset supplies the grouping, rangeStrategy and automerge posture but stays release-line agnostic, so this URL is the ONE place the Alpine release line is written. Bump `branch=v3.24` when the base image crosses a release line (3.24 -> 3.25). `components=main,community` merges both indexes in a single lookup (registryStrategy 'merge'), so community packages need no separate registryUrls override.",
       "matchDatasources": ["apk"],
       "registryUrls": ["https://dl-cdn.alpinelinux.org/alpine?branch=v3.24&components=main,community&arch=x86_64"]
+    },
+    {
+      "description": "Vendored HetrixTools agent — NEVER automerge, at any update type. The bump only moves the `upstream-agent.version` marker; the agent script itself is vendored in-tree and must be re-fetched by hand with the `>>> ha-app patch >>>` dry_run patch re-applied (see hetrixtools-agent/DOCS.md). Without this rule the marker is swept into :automerge's 'all non-major dependencies' bundle and merged unattended, leaving the marker claiming a version the vendored script isn't.",
+      "matchDatasources": ["github-tags"],
+      "matchPackageNames": ["hetrixtools/agent"],
+      "groupName": "hetrixtools agent",
+      "automerge": false,
+      "addLabels": ["needs-review"]
+    },
+    {
+      "description": "The ONE `feat:` in this repo's Renovate surface, and a deliberate exception to the fleet rule that no dependency update is ever typed `feat:` (see owine/renovate-config's README). It holds here because this app is a packaging shim: its whole output is the HetrixTools agent, so the version a user runs IS this dependency's version — the question Renovate can't normally answer (\"is this bump consumer-visible?\") has a fixed answer of yes. Scoped to minor/major only so an upstream PATCH stays `deps:` (patch release) instead of cutting a minor here: the app's semver then tracks upstream's own update type rather than drifting a digit ahead of it. The `feat:` lands only when the re-vendor commit does, since the rule above blocks automerge.",
+      "matchDatasources": ["github-tags"],
+      "matchPackageNames": ["hetrixtools/agent"],
+      "matchUpdateTypes": ["minor", "major"],
+      "semanticCommitType": "feat"
     }
   ]
 }
