@@ -8,7 +8,7 @@ permissions:
   pull-requests: write
 jobs:
   release-please:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       # An App token (not the default GITHUB_TOKEN) so the release PR and the
       # published release trigger downstream workflows (Lint on the PR, the
