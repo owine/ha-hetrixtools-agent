@@ -27,6 +27,13 @@ jobs:
           version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
             | sed -E 's/.*"([^"]+)".*/\1/')"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+      # This step owns the runner label for the `build` job below. The action
+      # maps each architecture to a runner OS internally, so there is no
+      # `runs-on:` literal in this repo to bump and Renovate's github-runners
+      # manager has nothing to match on. The labels move only when this
+      # action's pinned digest moves — an ordinary digest bump can change the
+      # build runner OS without mentioning Ubuntu anywhere in the diff, so read
+      # the action source when reviewing those bumps.
       - name: Build matrix
         id: matrix
         uses: home-assistant/builder/actions/prepare-multi-arch-matrix@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
@@ -37,8 +44,9 @@ jobs:
   build:
     name: Build ${{ matrix.arch }}
     needs: init
-    # Native per-arch runners (ubuntu-24.04 / ubuntu-24.04-arm) from the matrix:
-    # build-image has no QEMU/platforms, so each arch builds on its own runner.
+    # The runner label comes from the init matrix, not from this file — see the
+    # note on the "Build matrix" step above. build-image has no QEMU/platforms,
+    # so each arch builds natively on its own runner.
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
