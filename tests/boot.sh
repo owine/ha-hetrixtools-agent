@@ -14,7 +14,6 @@
 set -euo pipefail
 
 IMAGE="${1:-}"
-PORT="${BOOT_STUB_PORT:-8099}"
 TIMEOUT="${BOOT_TIMEOUT:-60}"
 
 if [ -z "$IMAGE" ]; then
@@ -23,6 +22,7 @@ if [ -z "$IMAGE" ]; then
 fi
 
 stub="$(mktemp -d)"
+stub_log="$(mktemp)"
 log="$(mktemp)"
 cid=""
 stub_pid=""
@@ -30,11 +30,13 @@ stub_pid=""
 cleanup() {
   [ -n "$cid" ] && docker rm -f "$cid" >/dev/null 2>&1 || true
   [ -n "$stub_pid" ] && kill "$stub_pid" 2>/dev/null || true
-  rm -rf "$stub" "$log"
+  rm -rf "$stub" "$stub_log" "$log"
 }
 trap cleanup EXIT
 
 # Every option the run script reads, with dry_run on so nothing is POSTed.
+# The path is the one bashio::app.config requests:
+# GET /addons/self/options/config.
 mkdir -p "$stub/addons/self/options"
 cat > "$stub/addons/self/options/config" <<'JSON'
 {"result": "ok", "data": {
@@ -53,8 +55,23 @@ cat > "$stub/addons/self/options/config" <<'JSON'
   "debug": false
 }}
 JSON
-python3 -m http.server "$PORT" --bind 0.0.0.0 --directory "$stub" >/dev/null 2>&1 &
+# Port 0 lets the OS pick a free port. http.server prints its "Serving HTTP
+# on ... port N" line only after binding, so waiting for that line both
+# discovers the port and closes the race with the container's first request.
+python3 -u -m http.server 0 --bind 0.0.0.0 --directory "$stub" >"$stub_log" 2>&1 &
 stub_pid=$!
+PORT=""
+for _ in $(seq 1 50); do
+  PORT="$(sed -nE 's/^Serving HTTP on .* port ([0-9]+) .*/\1/p' "$stub_log")"
+  [ -n "$PORT" ] && break
+  kill -0 "$stub_pid" 2>/dev/null || break
+  sleep 0.2
+done
+if [ -z "$PORT" ] || ! curl -fsS "http://127.0.0.1:${PORT}/addons/self/options/config" | grep -q '"dry_run": true'; then
+  cat "$stub_log"
+  echo "FAIL: stub Supervisor did not come up"
+  exit 1
+fi
 
 cid="$(docker run -d --platform linux/amd64 \
   --add-host supervisor:host-gateway \
