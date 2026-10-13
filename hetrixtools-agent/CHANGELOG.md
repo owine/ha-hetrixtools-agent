@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.0...hetrixtools-agent-v0.2.1) (2026-10-12)
+
+
+### Dependencies
+
+* update ghcr.io/home-assistant/base:3.24 docker digest to 8fde417 ([#44](https://github.com/owine/ha-hetrixtools-agent/issues/44)) ([56b4f3e](https://github.com/owine/ha-hetrixtools-agent/commit/56b4f3eb2269120604d91b38645c017433b1e428))
+
 ## [0.2.0](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.1.2...hetrixtools-agent-v0.2.0) (2026-09-17)
 
 
