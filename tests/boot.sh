@@ -11,14 +11,17 @@
 # from the runner host with python3 and reached via SUPERVISOR_API.
 #
 # Usage: tests/boot.sh [image]   (default: builds hetrixtools-agent:boot)
+# BOOT_PLATFORM selects the image platform (default linux/amd64). CI sets it to
+# the runner's native platform so each arch boots without emulation.
 set -euo pipefail
 
 IMAGE="${1:-}"
 TIMEOUT="${BOOT_TIMEOUT:-60}"
+PLATFORM="${BOOT_PLATFORM:-linux/amd64}"
 
 if [ -z "$IMAGE" ]; then
   IMAGE=hetrixtools-agent:boot
-  docker build --platform linux/amd64 -t "$IMAGE" hetrixtools-agent
+  docker build --platform "$PLATFORM" -t "$IMAGE" hetrixtools-agent
 fi
 
 stub="$(mktemp -d)"
@@ -73,7 +76,7 @@ if [ -z "$PORT" ] || ! curl -fsS "http://127.0.0.1:${PORT}/addons/self/options/c
   exit 1
 fi
 
-cid="$(docker run -d --platform linux/amd64 \
+cid="$(docker run -d --platform "$PLATFORM" \
   --add-host supervisor:host-gateway \
   -e SUPERVISOR_API="http://supervisor:${PORT}" \
   -e SUPERVISOR_TOKEN=boot-test \
