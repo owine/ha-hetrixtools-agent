@@ -24,6 +24,7 @@ jobs:
           shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/detect-interfaces.sh
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
           shellcheck tests/smoke.sh
+          shellcheck tests/boot.sh
       - name: hadolint
         uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
