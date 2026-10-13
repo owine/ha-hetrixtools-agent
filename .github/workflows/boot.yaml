@@ -1,0 +1,24 @@
+---
+name: Boot
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # manual re-run lever if GitHub drops a pull_request event
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  boot:
+    # Runs on pull_request so it gates Renovate automerge: Build only runs on
+    # main and on releases, so before this job a base-image digest bump merged
+    # with nothing having started the container. See tests/boot.sh.
+    name: Boot through s6-overlay
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build amd64 image and boot it
+        run: tests/boot.sh
