@@ -16,9 +16,25 @@ jobs:
     # Runs on pull_request so it gates Renovate automerge: Build only runs on
     # main and on releases, so before this job a base-image digest bump merged
     # with nothing having started the container. See tests/boot.sh.
-    name: Boot through s6-overlay
-    runs-on: ubuntu-26.04
+    # Each arch boots natively on its own runner (no QEMU). The job names are
+    # the required status checks in the main ruleset: renaming this job or
+    # changing the matrix arch values means updating the ruleset too.
+    name: Boot through s6-overlay (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-26.04
+          - arch: aarch64
+            platform: linux/arm64
+            runner: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Build amd64 image and boot it
+      - name: Build ${{ matrix.arch }} image and boot it
+        env:
+          BOOT_PLATFORM: ${{ matrix.platform }}
         run: tests/boot.sh
