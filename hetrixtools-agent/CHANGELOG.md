@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.1...hetrixtools-agent-v0.2.2) (2026-10-13)
+
+
+### Bug Fixes
+
+* **s6:** define the user bundle in user-bundles.d ([13ee6a9](https://github.com/owine/ha-hetrixtools-agent/commit/13ee6a9acca473928ab69d6803ec0f0688a88d3f))
+* **s6:** start the agent after the base bundle ([421cf6e](https://github.com/owine/ha-hetrixtools-agent/commit/421cf6e9646784e5789eac78d65631a1a4d7c6ee))
+
 ## [0.2.1](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.0...hetrixtools-agent-v0.2.1) (2026-10-12)
 
 
