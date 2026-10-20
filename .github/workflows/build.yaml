@@ -15,6 +15,11 @@ env:
   IMAGE_NAME: hetrixtools-agent
 jobs:
   init:
+    # The promote job's own config.yaml commit lands under hetrixtools-agent/**;
+    # it changes nothing in the image, so skip the redundant no-push build.
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release): publish ')
     runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -33,6 +38,9 @@ jobs:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
           if [ "${GITHUB_EVENT_NAME}" = release ]; then
+            [[ "${TAG_NAME}" == hetrixtools-agent-v* ]] || {
+              echo "::error::tag ${TAG_NAME} is not a release-please tag (hetrixtools-agent-vX.Y.Z)"
+              exit 1; }
             version="${TAG_NAME#hetrixtools-agent-v}"
             label="$(sed -nE 's/^LABEL io\.hass\.version="([^"]+)"$/\1/p' \
               hetrixtools-agent/Dockerfile)"
@@ -121,6 +129,8 @@ jobs:
     # failed build leaves the previous, working version in place.
     if: github.event_name == 'release'
     runs-on: ubuntu-26.04
+    # The App secrets are scoped to this environment (see release-please.yaml).
+    environment: release
     # Writes go through the App token below; the GITHUB_TOKEN is not used.
     permissions: {}
     defaults:
@@ -177,3 +187,40 @@ jobs:
             -f message="chore(release): publish ${VERSION} to add-on store" \
             -f content="$(base64 -w0 config.yaml)" \
             --jq '.commit.html_url'
+  notify-failure:
+    name: Report a release that did not reach the store
+    needs: [init, build, manifest, promote]
+    # Release runs are started by the release App, so GitHub's failure email may
+    # not reach anyone; open an issue instead, since a failure here now means
+    # the release silently never ships (the store keeps the previous version).
+    if: failure() && github.event_name == 'release'
+    runs-on: ubuntu-26.04
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Release ${TAG_NAME} did not reach the add-on store"
+          # One issue per release: a failed re-run comments on it instead.
+          existing="$(gh issue list --state open --search "in:title \"${title}\"" \
+            --json number,title --jq '.[] | "\(.number)\t\(.title)"' \
+            | awk -F'\t' -v t="${title}" '$2 == t { print $1; exit }')"
+          if [ -n "${existing}" ]; then
+            gh issue comment "${existing}" --body "Failed again: ${RUN_URL}"
+            exit 0
+          fi
+          gh issue create --label bug --title "${title}" --body "$(cat <<BODY
+          The Build run for \`${TAG_NAME}\` failed, so \`config.yaml\` on main was not
+          bumped and HA instances are still offered the previous version.
+
+          Run: ${RUN_URL}
+
+          Fix the cause, then re-run the failed jobs. \`promote\` is idempotent and
+          will not downgrade the store if a newer release has shipped since.
+          BODY
+          )"
