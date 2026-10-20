@@ -16,10 +16,12 @@ env:
 jobs:
   init:
     # The promote job's own config.yaml commit lands under hetrixtools-agent/**;
-    # it changes nothing in the image, so skip the redundant no-push build.
+    # it changes nothing in the image, so skip the redundant no-push build. The
+    # actor check keeps a human commit with the same prefix from being skipped.
     if: >-
       github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release): publish ')
+      !(startsWith(github.event.head_commit.message, 'chore(release): publish ') &&
+        github.actor == 'ha-hetrixtools-agent-release-bot[bot]')
     runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
