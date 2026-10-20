@@ -21,11 +21,20 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # On a release the version comes from the tag (hetrixtools-agent-vX.Y.Z):
+      # the tagged config.yaml still holds the previous version, because the
+      # promote job below only bumps it after the image is published.
       - name: Read app version
         id: meta
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
-            | sed -E 's/.*"([^"]+)".*/\1/')"
+          if [ "${GITHUB_EVENT_NAME}" = release ]; then
+            version="${TAG_NAME##*-v}"
+          else
+            version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
+              | sed -E 's/.*"([^"]+)".*/\1/')"
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       # This step owns the runner label for the `build` job below. The action
       # maps each architecture to a runner OS internally, so there is no
@@ -93,3 +102,59 @@ jobs:
           image-tags: |
             ${{ needs.init.outputs.version }}
             latest
+  promote:
+    name: Publish version to add-on store
+    needs: [init, manifest]
+    # Supervisor reads config.yaml from main, so bumping its version is what
+    # offers the update to HA instances. Doing it here, gated on the manifest
+    # job, means the store never advertises a version that cannot be pulled; a
+    # failed build leaves the previous, working version in place.
+    if: github.event_name == 'release'
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Verify the published manifest covers every arch
+        env:
+          VERSION: ${{ needs.init.outputs.version }}
+        run: |
+          [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::unexpected version '${VERSION}'"; exit 1; }
+          platforms="$(docker buildx imagetools inspect --raw \
+            "ghcr.io/owine/${IMAGE_NAME}:${VERSION}" \
+            | jq -r '.manifests[].platform | "\(.os)/\(.architecture)"')"
+          for arch in $(jq -r '.[]' <<<"${ARCHITECTURES}"); do
+            [ "${arch}" = aarch64 ] && arch=arm64
+            grep -qx "linux/${arch}" <<<"${platforms}" || {
+              echo "::error::${VERSION} manifest is missing linux/${arch}"; exit 1; }
+          done
+      # The release App is a bypass actor on the main ruleset, so it can commit
+      # directly; the default GITHUB_TOKEN cannot.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+      # Committed through the contents API rather than git push so the commit is
+      # signed by GitHub, and the blob sha makes it fail instead of clobbering if
+      # config.yaml changed on main in the meantime.
+      - name: Bump config.yaml on main
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.init.outputs.version }}
+        run: |
+          api="repos/${GITHUB_REPOSITORY}/contents/hetrixtools-agent/config.yaml"
+          gh api "${api}?ref=main" > current.json
+          jq -r .content current.json | base64 -d > config.yaml
+          if grep -qx "version: \"${VERSION}\"" config.yaml; then
+            echo "config.yaml already at ${VERSION}"; exit 0
+          fi
+          sed -i -E "s/^version: \"[^\"]+\"$/version: \"${VERSION}\"/" config.yaml
+          grep -qx "version: \"${VERSION}\"" config.yaml || {
+            echo "::error::no version line to bump in config.yaml"; exit 1; }
+          gh api -X PUT "${api}" \
+            -f branch=main \
+            -f sha="$(jq -r .sha current.json)" \
+            -f message="chore(release): publish ${VERSION} to add-on store" \
+            -f content="$(base64 -w0 config.yaml)" \
+            --jq '.commit.html_url'
