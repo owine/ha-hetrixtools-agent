@@ -9,6 +9,10 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-26.04
+    # The App secrets live in the `release` environment, which only main and
+    # hetrixtools-agent-v* tags can deploy to. The App can bypass the main
+    # ruleset, so its key must not be readable from a workflow on another branch.
+    environment: release
     steps:
       # An App token (not the default GITHUB_TOKEN) so the release PR and the
       # published release trigger downstream workflows (Lint on the PR, the

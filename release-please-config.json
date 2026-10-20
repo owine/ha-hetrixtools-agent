@@ -64,10 +64,6 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "config.yaml"
-        },
-        {
-          "type": "generic",
           "path": "Dockerfile"
         }
       ]

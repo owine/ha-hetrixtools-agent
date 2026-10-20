@@ -1,7 +1,9 @@
 ---
 name: "HetrixTools Agent"
 description: "Runs the HetrixTools server monitoring agent to report this Home Assistant host to HetrixTools"
-version: "0.2.2" # x-release-please-version
+# Bumped by the Build workflow's promote job once the release image is
+# published, not by release-please, so the store never offers an unpullable version.
+version: "0.2.2"
 slug: "hetrixtools_agent"
 init: false
 image: "ghcr.io/owine/hetrixtools-agent"

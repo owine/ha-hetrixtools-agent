@@ -15,17 +15,46 @@ env:
   IMAGE_NAME: hetrixtools-agent
 jobs:
   init:
+    # The promote job's own config.yaml commit lands under hetrixtools-agent/**;
+    # it changes nothing in the image, so skip the redundant no-push build. The
+    # actor check keeps a human commit with the same prefix from being skipped.
+    if: >-
+      github.event_name != 'push' ||
+      !(startsWith(github.event.head_commit.message, 'chore(release): publish ') &&
+        github.actor == 'ha-hetrixtools-agent-release-bot[bot]')
     runs-on: ubuntu-26.04
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # On a release the version comes from the tag (hetrixtools-agent-vX.Y.Z):
+      # the tagged config.yaml still holds the previous version, because the
+      # promote job below only bumps it after the image is published. Validated
+      # here, before anything is pushed, so a hand-made or prerelease tag cannot
+      # publish an odd image tag or move `latest`.
       - name: Read app version
         id: meta
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
-            | sed -E 's/.*"([^"]+)".*/\1/')"
+          if [ "${GITHUB_EVENT_NAME}" = release ]; then
+            [[ "${TAG_NAME}" == hetrixtools-agent-v* ]] || {
+              echo "::error::tag ${TAG_NAME} is not a release-please tag (hetrixtools-agent-vX.Y.Z)"
+              exit 1; }
+            version="${TAG_NAME#hetrixtools-agent-v}"
+            label="$(sed -nE 's/^LABEL io\.hass\.version="([^"]+)"$/\1/p' \
+              hetrixtools-agent/Dockerfile)"
+            [ "${version}" = "${label}" ] || {
+              echo "::error::tag ${TAG_NAME} does not match Dockerfile io.hass.version '${label}'"
+              exit 1; }
+          else
+            version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
+              | sed -E 's/.*"([^"]+)".*/\1/')"
+          fi
+          [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::unexpected version '${version}'"; exit 1; }
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       # This step owns the runner label for the `build` job below. The action
       # maps each architecture to a runner OS internally, so there is no
@@ -93,3 +122,107 @@ jobs:
           image-tags: |
             ${{ needs.init.outputs.version }}
             latest
+  promote:
+    name: Publish version to add-on store
+    needs: [init, manifest]
+    # Supervisor reads config.yaml from main, so bumping its version is what
+    # offers the update to HA instances. Doing it here, gated on the manifest
+    # job, means the store never advertises a version that cannot be pulled; a
+    # failed build leaves the previous, working version in place.
+    if: github.event_name == 'release'
+    runs-on: ubuntu-26.04
+    # The App secrets are scoped to this environment (see release-please.yaml).
+    environment: release
+    # Writes go through the App token below; the GITHUB_TOKEN is not used.
+    permissions: {}
+    defaults:
+      run:
+        shell: bash  # adds pipefail, so a failed inspect/gh call surfaces as itself
+    steps:
+      - name: Verify the published manifest covers every arch
+        env:
+          VERSION: ${{ needs.init.outputs.version }}
+        run: |
+          platforms="$(docker buildx imagetools inspect --raw \
+            "ghcr.io/owine/${IMAGE_NAME}:${VERSION}" \
+            | jq -r '.manifests[].platform | "\(.os)/\(.architecture)"')"
+          for arch in $(jq -r '.[]' <<<"${ARCHITECTURES}"); do
+            [ "${arch}" = aarch64 ] && arch=arm64
+            grep -qx "linux/${arch}" <<<"${platforms}" || {
+              echo "::error::${VERSION} manifest is missing linux/${arch}"; exit 1; }
+          done
+      # The release App is a bypass actor on the main ruleset, so it can commit
+      # directly; the default GITHUB_TOKEN cannot.
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+      # Committed through the contents API rather than git push so the commit is
+      # signed by GitHub. The blob sha only guards the moment between read and
+      # write. Re-running an older release's job (or a slow run finishing after
+      # a newer one) must not move the store backwards, so never downgrade.
+      - name: Bump config.yaml on main
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.init.outputs.version }}
+        run: |
+          api="repos/${GITHUB_REPOSITORY}/contents/hetrixtools-agent/config.yaml"
+          gh api "${api}?ref=main" > current.json
+          jq -r .content current.json | base64 -d > config.yaml
+          current="$(sed -nE 's/^version: "([^"]+)"$/\1/p' config.yaml)"
+          if [ "${current}" = "${VERSION}" ]; then
+            echo "config.yaml already at ${VERSION}"; exit 0
+          fi
+          if [ "$(printf '%s\n%s\n' "${current}" "${VERSION}" | sort -V | tail -n1)" != "${VERSION}" ]; then
+            echo "::warning::main is at ${current}, newer than ${VERSION}; not downgrading"
+            exit 0
+          fi
+          sed -i -E "s/^version: \"[^\"]+\"$/version: \"${VERSION}\"/" config.yaml
+          grep -qx "version: \"${VERSION}\"" config.yaml || {
+            echo "::error::no version line to bump in config.yaml"; exit 1; }
+          gh api -X PUT "${api}" \
+            -f branch=main \
+            -f sha="$(jq -r .sha current.json)" \
+            -f message="chore(release): publish ${VERSION} to add-on store" \
+            -f content="$(base64 -w0 config.yaml)" \
+            --jq '.commit.html_url'
+  notify-failure:
+    name: Report a release that did not reach the store
+    needs: [init, build, manifest, promote]
+    # Release runs are started by the release App, so GitHub's failure email may
+    # not reach anyone; open an issue instead, since a failure here now means
+    # the release silently never ships (the store keeps the previous version).
+    if: failure() && github.event_name == 'release'
+    runs-on: ubuntu-26.04
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Release ${TAG_NAME} did not reach the add-on store"
+          # One issue per release: a failed re-run comments on it instead.
+          existing="$(gh issue list --state open --search "in:title \"${title}\"" \
+            --json number,title --jq '.[] | "\(.number)\t\(.title)"' \
+            | awk -F'\t' -v t="${title}" '$2 == t { print $1; exit }')"
+          if [ -n "${existing}" ]; then
+            gh issue comment "${existing}" --body "Failed again: ${RUN_URL}"
+            exit 0
+          fi
+          gh issue create --label bug --title "${title}" --body "$(cat <<BODY
+          The Build run for \`${TAG_NAME}\` failed, so \`config.yaml\` on main was not
+          bumped and HA instances are still offered the previous version.
+
+          Run: ${RUN_URL}
+
+          Fix the cause, then re-run the failed jobs. \`promote\` is idempotent and
+          will not downgrade the store if a newer release has shipped since.
+          BODY
+          )"
