@@ -1,0 +1,5 @@
+---
+_extends: owine/renovate-config:/release-drafter.yml
+tag-prefix: 'hetrixtools-agent-v'
+tag-template: 'hetrixtools-agent-v$RESOLVED_VERSION'
+name-template: 'hetrixtools-agent-v$RESOLVED_VERSION'
