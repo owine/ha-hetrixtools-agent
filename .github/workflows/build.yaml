@@ -15,8 +15,10 @@ env:
   IMAGE_NAME: hetrixtools-agent
 jobs:
   init:
-    # The promote job's own config.yaml commit lands under hetrixtools-agent/**;
-    # it changes nothing in the image, so skip the redundant no-push build. The
+    # The promote job's own config.yaml + CHANGELOG.md commit lands under
+    # hetrixtools-agent/**; it changes nothing in the image, so skip the
+    # redundant no-push build. The message prefix must match the headline
+    # promote commits with. The
     # actor check keeps a human commit with the same prefix from being skipped.
     if: >-
       github.event_name != 'push' ||
@@ -30,9 +32,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # On a release the version comes from the tag (hetrixtools-agent-vX.Y.Z):
       # the tagged config.yaml still holds the previous version, because the
-      # promote job below only bumps it after the image is published. Validated
-      # here, before anything is pushed, so a hand-made or prerelease tag cannot
-      # publish an odd image tag or move `latest`.
+      # promote job below only bumps it after the image is published. The
+      # builder action stamps it into the image's io.hass.version label.
+      # Validated here, before anything is pushed, so a hand-made or prerelease
+      # tag cannot publish an odd image tag or move `latest`.
       - name: Read app version
         id: meta
         shell: bash
@@ -41,14 +44,9 @@ jobs:
         run: |
           if [ "${GITHUB_EVENT_NAME}" = release ]; then
             [[ "${TAG_NAME}" == hetrixtools-agent-v* ]] || {
-              echo "::error::tag ${TAG_NAME} is not a release-please tag (hetrixtools-agent-vX.Y.Z)"
+              echo "::error::tag ${TAG_NAME} is not a release tag (hetrixtools-agent-vX.Y.Z)"
               exit 1; }
             version="${TAG_NAME#hetrixtools-agent-v}"
-            label="$(sed -nE 's/^LABEL io\.hass\.version="([^"]+)"$/\1/p' \
-              hetrixtools-agent/Dockerfile)"
-            [ "${version}" = "${label}" ] || {
-              echo "::error::tag ${TAG_NAME} does not match Dockerfile io.hass.version '${label}'"
-              exit 1; }
           else
             version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
               | sed -E 's/.*"([^"]+)".*/\1/')"
@@ -129,9 +127,16 @@ jobs:
     # offers the update to HA instances. Doing it here, gated on the manifest
     # job, means the store never advertises a version that cannot be pulled; a
     # failed build leaves the previous, working version in place.
+    #
+    # Supervisor also shows CHANGELOG.md to users, so the release notes (the
+    # published release's body, drafted by release-drafter) are prepended to it
+    # in the same commit: HA never sees a version without its changelog.
     if: github.event_name == 'release'
     runs-on: ubuntu-26.04
-    # The App secrets are scoped to this environment (see release-please.yaml).
+    # The App secrets live in the `release` environment, which only main and
+    # hetrixtools-agent-v* tags can deploy to (a release: published run is on
+    # its tag, so it qualifies). The App can bypass the main ruleset, so its key
+    # must not be readable from a workflow on another branch.
     environment: release
     # Writes go through the App token below; the GITHUB_TOKEN is not used.
     permissions: {}
@@ -160,41 +165,124 @@ jobs:
           client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
-      # Committed through the contents API rather than git push so the commit is
-      # signed by GitHub. The blob sha only guards the moment between read and
-      # write. Re-running an older release's job (or a slow run finishing after
-      # a newer one) must not move the store backwards, so never downgrade.
-      - name: Bump config.yaml on main
+      # Committed through GraphQL createCommitOnBranch rather than git push so
+      # GitHub signs the commit, and both files land in one commit.
+      # expectedHeadOid makes a concurrent push to main fail the commit instead
+      # of being overwritten. The commit's chore type is pre-excluded from
+      # release-drafter's notes, and its headline must keep the prefix init's
+      # skip condition matches. Re-running an older release's job (or a slow
+      # run finishing after a newer one) must not move the store backwards, so
+      # never downgrade.
+      - name: Bump config.yaml and CHANGELOG.md on main
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
           VERSION: ${{ needs.init.outputs.version }}
+          TAG_SHA: ${{ github.sha }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+          CONFIG: hetrixtools-agent/config.yaml
+          CHANGELOG: hetrixtools-agent/CHANGELOG.md
         run: |
-          api="repos/${GITHUB_REPOSITORY}/contents/hetrixtools-agent/config.yaml"
-          gh api "${api}?ref=main" > current.json
-          jq -r .content current.json | base64 -d > config.yaml
-          current="$(sed -nE 's/^version: "([^"]+)"$/\1/p' config.yaml)"
-          if [ "${current}" = "${VERSION}" ]; then
-            echo "config.yaml already at ${VERSION}"; exit 0
+          semver='^[0-9]+\.[0-9]+\.[0-9]+$'
+          if ! [[ "${VERSION}" =~ ${semver} ]]; then
+            echo "::error::release tag gives version '${VERSION}', expected X.Y.Z"
+            exit 1
           fi
-          if [ "$(printf '%s\n%s\n' "${current}" "${VERSION}" | sort -V | tail -n1)" != "${VERSION}" ]; then
-            echo "::warning::main is at ${current}, newer than ${VERSION}; not downgrading"
+          # Read everything at one main commit; the commit below is made
+          # against that same commit or not at all.
+          head="$(gh api "repos/${REPO}/git/ref/heads/main" --jq .object.sha)"
+          # A release can be cut by hand on any commit, but only reviewed code
+          # may reach HA: the tagged commit must already be on main.
+          status="$(gh api "repos/${REPO}/compare/${TAG_SHA}...${head}" --jq .status)"
+          if [ "${status}" != identical ] && [ "${status}" != ahead ]; then
+            echo "::error::release commit ${TAG_SHA} is not on main (${status}); not promoting"
+            exit 1
+          fi
+          cd "${RUNNER_TEMP}" || exit 1
+          raw=(-H "Accept: application/vnd.github.raw")
+          gh api "${raw[@]}" "repos/${REPO}/contents/${CONFIG}?ref=${head}" > config.yaml
+          current="$(sed -nE 's/^version: "([^"]+)".*/\1/p' config.yaml)"
+          if ! [[ "${current}" =~ ${semver} ]]; then
+            echo "::error::no 'version: \"X.Y.Z\"' line in ${CONFIG} (got '${current}')"
+            exit 1
+          fi
+          # Only ever move forward: re-running an older release's promote must
+          # not roll HA users back to it, nor add its notes to the changelog
+          # a second time.
+          newest="$(printf '%s\n%s\n' "${current}" "${VERSION}" | sort -V | tail -n1)"
+          if [ "${current}" = "${VERSION}" ] || [ "${newest}" != "${VERSION}" ]; then
+            echo "::notice::config.yaml is at ${current}; leaving it and ${CHANGELOG} (release ${VERSION})"
             exit 0
           fi
-          sed -i -E "s/^version: \"[^\"]+\"$/version: \"${VERSION}\"/" config.yaml
-          grep -qx "version: \"${VERSION}\"" config.yaml || {
-            echo "::error::no version line to bump in config.yaml"; exit 1; }
-          gh api -X PUT "${api}" \
-            -f branch=main \
-            -f sha="$(jq -r .sha current.json)" \
-            -f message="chore(release): publish ${VERSION} to add-on store" \
-            -f content="$(base64 -w0 config.yaml)" \
-            --jq '.commit.html_url'
+          sed -i -E "s/^version: \"[^\"]+\"/version: \"${VERSION}\"/" config.yaml
+
+          gh api "${raw[@]}" "repos/${REPO}/contents/${CHANGELOG}?ref=${head}" > CHANGELOG.md
+          if [ "$(head -n1 CHANGELOG.md)" != "# Changelog" ]; then
+            echo "::error::${CHANGELOG} does not start with '# Changelog'"
+            exit 1
+          fi
+          # The notes cover the range since the previous published release,
+          # which is what release-drafter drafted them against.
+          prev="$(gh api --paginate "repos/${REPO}/releases" \
+              --jq '.[] | select(.draft | not) | select(.prerelease | not) | .tag_name' |
+            sed -nE 's/^hetrixtools-agent-v([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' | sort -uV |
+            awk -v v="${VERSION}" '$0 == v { prev = p } { p = $0 } END { print prev }')"
+          if [ -z "${prev}" ]; then
+            echo "::error::no published release before ${VERSION} to compare against"
+            exit 1
+          fi
+          if [ "${prev}" != "${current}" ]; then
+            echo "::warning::HA is moving from ${current}, but these notes only cover ${prev}...${VERSION}"
+          fi
+          # $(...) drops the body's trailing blank lines, so one blank line
+          # separates it from the previous entry.
+          body="$(printf '%s' "${RELEASE_BODY}" | tr -d '\r')"
+          # Match the existing (release-please era) entries: categories one
+          # level below the version heading, and PR numbers as links, since
+          # neither HA nor GitHub's file view autolinks #123.
+          compare="https://github.com/${REPO}/compare/hetrixtools-agent-v${prev}...hetrixtools-agent-v${VERSION}"
+          {
+            echo "# Changelog"
+            echo
+            echo "## [${VERSION}](${compare}) (${PUBLISHED_AT%%T*})"
+            echo
+            printf '%s\n' "${body}" |
+              sed -E -e 's/^(#+ )/#\1/' \
+                -e "s|\(#([0-9]+)\)|([#\1](https://github.com/${REPO}/issues/\1))|g"
+            echo
+            tail -n +3 CHANGELOG.md
+          } > CHANGELOG.new
+          mv CHANGELOG.new CHANGELOG.md
+
+          jq -n \
+            --arg repo "${REPO}" \
+            --arg head "${head}" \
+            --arg headline "chore(release): publish ${VERSION} to add-on store" \
+            --arg config_path "${CONFIG}" \
+            --rawfile config <(base64 -w0 config.yaml) \
+            --arg changelog_path "${CHANGELOG}" \
+            --rawfile changelog <(base64 -w0 CHANGELOG.md) \
+            '{
+              query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid signature { isValid } } } }",
+              variables: { input: {
+                branch: { repositoryNameWithOwner: $repo, branchName: "main" },
+                expectedHeadOid: $head,
+                message: { headline: $headline },
+                fileChanges: { additions: [
+                  { path: $config_path, contents: $config },
+                  { path: $changelog_path, contents: $changelog }
+                ] }
+              } }
+            }' > commit.json
+          gh api graphql --input commit.json \
+            --jq '.data.createCommitOnBranch.commit | "Committed " + .oid + " (verified: " + (.signature.isValid | tostring) + ")"'
   notify-failure:
     name: Report a release that did not reach the store
     needs: [init, build, manifest, promote]
-    # Release runs are started by the release App, so GitHub's failure email may
-    # not reach anyone; open an issue instead, since a failure here now means
-    # the release silently never ships (the store keeps the previous version).
+    # Open an issue rather than rely on GitHub's failure email to whoever
+    # published the release, since a failure here means the release silently
+    # never ships (the store keeps the previous version).
     if: failure() && github.event_name == 'release'
     runs-on: ubuntu-26.04
     permissions:

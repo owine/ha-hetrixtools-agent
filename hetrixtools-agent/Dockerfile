@@ -39,11 +39,10 @@ RUN apk add --no-cache \
 
 COPY rootfs /
 
+# io.hass.version and io.hass.arch are not set here: the Build workflow's
+# builder action labels the image with the release tag's version and the arch.
 LABEL \
     io.hass.name="HetrixTools Agent" \
     io.hass.description="Runs the HetrixTools server monitoring agent for this HA host" \
     io.hass.type="addon" \
     org.opencontainers.image.source="https://github.com/owine/ha-hetrixtools-agent"
-# x-release-please-start-version
-LABEL io.hass.version="0.2.2"
-# x-release-please-end
