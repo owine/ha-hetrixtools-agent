@@ -18,10 +18,19 @@ startup: services
 boot: auto
 
 # Host visibility: report the real HA OS host, not the container.
+# full_access is only granted with protection mode off (see DOCS.md).
+# host_pid must stay off: s6-overlay refuses to start unless it is PID 1, and
+# the Supervisor grants host_pid exactly when protection mode is off, so the
+# app would fail to boot for the users who need full_access. /proc/stat,
+# /proc/meminfo and /proc/uptime are host-wide without it anyway.
 full_access: true
 host_network: true
-host_pid: true
 udev: true
+# ICMP outgoing_pings open raw sockets. Docker grants NET_RAW by default today,
+# but the Supervisor is moving to drop it, and full_access (which implies
+# every capability) is withheld while protection mode is on.
+privileged:
+  - NET_RAW
 
 options:
   sid: ""

@@ -1,0 +1,62 @@
+---
+configuration:
+  sid:
+    name: Server ID
+    description: >-
+      The 32-character Server ID (SID) of your HetrixTools server monitor,
+      shown in its Install Monitoring Agent command.
+  collect_every_seconds:
+    name: Collection interval
+    description: >-
+      Seconds between samples within each one-minute reporting cycle (1-60).
+      Data is still sent to HetrixTools once a minute.
+  check_drive_health:
+    name: Check drive health
+    description: >-
+      Report SMART drive health. Needs protection mode off and drives that
+      support SMART.
+  check_soft_raid:
+    name: Check software RAID
+    description: Report the status of software RAID (md) arrays.
+  check_reboot:
+    name: Check reboot required
+    description: >-
+      Report whether the host needs a reboot. Usually does nothing on HA OS,
+      which does not write the reboot-required flag.
+  running_processes:
+    name: Report running processes
+    description: >-
+      Send a list of running processes to HetrixTools. Only the processes of
+      this app are visible, not the whole host.
+  connection_ports:
+    name: Connection ports
+    description: Ports to count active connections on, like 80 or 443.
+  check_services:
+    name: Services to check
+    description: >-
+      Process names to check for. Only the processes of this app are visible,
+      so host services cannot be checked.
+  ignored_disks:
+    name: Ignored disks
+    description: >-
+      Extended regex of df lines to leave out of disk reporting. Leave empty
+      for the default, tmpfs|aufs|squashfs|container_tmp|^overlay. A value
+      replaces the default rather than adding to it.
+  outgoing_pings:
+    name: Outgoing pings
+    description: >-
+      Latency targets, each name,host for ICMP or name,host,port for a TCP
+      probe, like gateway,192.168.1.1 or api,example.com,443.
+  outgoing_pings_count:
+    name: Pings per target
+    description: Probes sent to each outgoing ping target per cycle (10-40).
+  dry_run:
+    name: Dry run
+    description: >-
+      Print the collected payloads to the log instead of sending them to
+      HetrixTools.
+  debug:
+    name: Debug logging
+    description: >-
+      Echo the agent's diagnostics to the log after each cycle. Verbose; turn
+      on only while investigating.
