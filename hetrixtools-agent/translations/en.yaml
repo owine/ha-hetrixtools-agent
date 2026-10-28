@@ -17,7 +17,9 @@ configuration:
       support SMART.
   check_soft_raid:
     name: Check software RAID
-    description: Report the status of software RAID (md) arrays.
+    description: >-
+      Report the status of software RAID (md) arrays. Needs protection mode
+      off.
   check_reboot:
     name: Check reboot required
     description: >-

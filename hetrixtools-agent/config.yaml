@@ -18,7 +18,8 @@ startup: services
 boot: auto
 
 # Host visibility: report the real HA OS host, not the container.
-# full_access is only granted with protection mode off (see DOCS.md).
+# full_access is only granted with protection mode off (see DOCS.md), and only
+# opens every device (cgroup rule "a *:* rwm"); it adds no capabilities.
 # host_pid must stay off: s6-overlay refuses to start unless it is PID 1, and
 # the Supervisor grants host_pid exactly when protection mode is off, so the
 # app would fail to boot for the users who need full_access. /proc/stat,
@@ -26,11 +27,17 @@ boot: auto
 full_access: true
 host_network: true
 udev: true
-# ICMP outgoing_pings open raw sockets. Docker grants NET_RAW by default today,
-# but the Supervisor is moving to drop it, and full_access (which implies
-# every capability) is withheld while protection mode is on.
+# Capabilities are granted whatever the protection mode.
+# - NET_RAW: ICMP outgoing_pings open raw sockets. Docker grants it by default
+#   today, but the Supervisor is moving to drop it unless requested here.
+# - SYS_RAWIO: SMART on SATA disks (ATA pass-through over SG_IO).
+# - SYS_ADMIN: SMART on NVMe drives (admin Get Log Page).
+# The two SMART ones only matter with protection mode off, when full_access
+# lets the app open the disks.
 privileged:
   - NET_RAW
+  - SYS_RAWIO
+  - SYS_ADMIN
 
 options:
   sid: ""

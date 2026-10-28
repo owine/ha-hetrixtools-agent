@@ -82,18 +82,38 @@ if [ -z "$PORT" ] || ! curl -fsS "http://127.0.0.1:${PORT}/addons/self/options/c
   exit 1
 fi
 
-# config.yaml booleans are written `key: true`; anything else counts as off.
-cfg_true() { grep -qE "^$1: true( |#|$)" "$CONFIG"; }
+# The flags below follow supervisor/docker/app.py. The parsing only knows the
+# forms config.yaml uses, so anything else (YAML 1.1 `yes`/`on`, a flow-style
+# list) fails here instead of silently testing the wrong grants.
+cfg_true() {
+  grep -qE "^$1: true( |#|$)" "$CONFIG" && return 0
+  grep -qE "^$1:" "$CONFIG" && ! grep -qE "^$1: false( |#|$)" "$CONFIG" && {
+    echo "FAIL: cannot parse '$1' in $CONFIG (write it as true or false)"
+    exit 1
+  }
+  return 1
+}
+if grep -qE '^privileged: *[^ #]' "$CONFIG"; then
+  echo "FAIL: cannot parse 'privileged' in $CONFIG (use a block list)"
+  exit 1
+fi
 
-# What the Supervisor grants regardless of protection mode.
-protected=()
+# What the Supervisor grants regardless of protection mode. Every app gets
+# seccomp unconfined and the host's /dev bound read-only (non-recursively);
+# device nodes in it are only usable with a cgroup rule, below.
+protected=(
+  --security-opt seccomp=unconfined
+  --mount "type=bind,src=/dev,dst=/dev,readonly,bind-recursive=writable"
+)
 cfg_true host_network && protected+=(--network=host)
+cfg_true udev && protected+=(-v /run/udev:/run/udev:ro)
 while read -r cap; do
   protected+=(--cap-add "$cap")
 done < <(sed -nE '/^privileged:/,/^[^ -]/s/^ +- +"?([A-Z_]+)"?.*/\1/p' "$CONFIG")
-# What it adds once the user turns protection mode off.
+# What it adds once the user turns protection mode off. full_access is a
+# device cgroup rule, not docker --privileged: it adds no capabilities.
 unprotected=("${protected[@]}")
-cfg_true full_access && unprotected+=(--privileged)
+cfg_true full_access && unprotected+=(--device-cgroup-rule 'a *:* rwm')
 cfg_true host_pid && unprotected+=(--pid=host)
 
 fail=0
