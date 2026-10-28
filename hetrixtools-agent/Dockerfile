@@ -44,5 +44,5 @@ COPY rootfs /
 LABEL \
     io.hass.name="HetrixTools Agent" \
     io.hass.description="Runs the HetrixTools server monitoring agent for this HA host" \
-    io.hass.type="addon" \
+    io.hass.type="app" \
     org.opencontainers.image.source="https://github.com/owine/ha-hetrixtools-agent"

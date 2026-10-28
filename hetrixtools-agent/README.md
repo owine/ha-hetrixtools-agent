@@ -11,3 +11,7 @@ Runs the HetrixTools server monitoring agent on your Home Assistant OS host. The
 5. Set your 32-character HetrixTools Server ID in the app's Configuration tab, then start the app.
 
 For full setup instructions, option descriptions, and HA OS caveats, see [DOCS.md](DOCS.md).
+
+## License
+
+[MIT](https://github.com/owine/ha-hetrixtools-agent/blob/main/LICENSE), except the bundled HetrixTools agent script, which is copyright HetrixTools and not covered by this license.

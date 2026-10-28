@@ -34,7 +34,7 @@ jobs:
       - name: yamllint
         run: |
           yamllint --version
-          yamllint hetrixtools-agent/config.yaml repository.yaml .github
+          yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository.yaml .github
       # bats is not part of the runner image; install only if it is missing.
       - name: bats
         run: |

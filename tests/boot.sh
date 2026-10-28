@@ -10,6 +10,11 @@
 # bashio reads options from the Supervisor API, so a stub Supervisor is served
 # from the runner host with python3 and reached via SUPERVISOR_API.
 #
+# The image boots twice, with what the Supervisor grants from config.yaml with
+# protection mode on and with it off. A key that only takes effect with
+# protection mode off can break the boot for exactly the users who turn it off
+# (host_pid does: s6-overlay refuses to run unless it is PID 1).
+#
 # Usage: tests/boot.sh [image]   (default: builds hetrixtools-agent:boot)
 # BOOT_PLATFORM selects the image platform (default linux/amd64). CI sets it to
 # the runner's native platform so each arch boots without emulation.
@@ -18,6 +23,7 @@ set -euo pipefail
 IMAGE="${1:-}"
 TIMEOUT="${BOOT_TIMEOUT:-60}"
 PLATFORM="${BOOT_PLATFORM:-linux/amd64}"
+CONFIG=hetrixtools-agent/config.yaml
 
 if [ -z "$IMAGE" ]; then
   IMAGE=hetrixtools-agent:boot
@@ -76,37 +82,86 @@ if [ -z "$PORT" ] || ! curl -fsS "http://127.0.0.1:${PORT}/addons/self/options/c
   exit 1
 fi
 
-cid="$(docker run -d --platform "$PLATFORM" \
-  --add-host supervisor:host-gateway \
-  -e SUPERVISOR_API="http://supervisor:${PORT}" \
-  -e SUPERVISOR_TOKEN=boot-test \
-  "$IMAGE")"
+# The flags below follow supervisor/docker/app.py. The parsing only knows the
+# forms config.yaml uses, so anything else (YAML 1.1 `yes`/`on`, a flow-style
+# list) fails here instead of silently testing the wrong grants.
+cfg_true() {
+  grep -qE "^$1: true( |#|$)" "$CONFIG" && return 0
+  grep -qE "^$1:" "$CONFIG" && ! grep -qE "^$1: false( |#|$)" "$CONFIG" && {
+    echo "FAIL: cannot parse '$1' in $CONFIG (write it as true or false)"
+    exit 1
+  }
+  return 1
+}
+if grep -qE '^privileged: *[^ #]' "$CONFIG"; then
+  echo "FAIL: cannot parse 'privileged' in $CONFIG (use a block list)"
+  exit 1
+fi
 
-for _ in $(seq 1 "$TIMEOUT"); do
-  docker logs "$cid" >"$log" 2>&1 || true
-  grep -q "Starting HetrixTools agent loop" "$log" && break
-  sleep 1
-done
-cat "$log"
-echo "----"
+# What the Supervisor grants regardless of protection mode. Every app gets
+# seccomp unconfined and the host's /dev bound read-only (non-recursively);
+# device nodes in it are only usable with a cgroup rule, below.
+protected=(
+  --security-opt seccomp=unconfined
+  --mount "type=bind,src=/dev,dst=/dev,readonly,bind-recursive=writable"
+)
+cfg_true host_network && protected+=(--network=host)
+cfg_true udev && protected+=(-v /run/udev:/run/udev:ro)
+while read -r cap; do
+  protected+=(--cap-add "$cap")
+done < <(sed -nE '/^privileged:/,/^[^ -]/s/^ +- +"?([A-Z_]+)"?.*/\1/p' "$CONFIG")
+# What it adds once the user turns protection mode off. full_access is a
+# device cgroup rule, not docker --privileged: it adds no capabilities.
+unprotected=("${protected[@]}")
+cfg_true full_access && unprotected+=(--device-cgroup-rule 'a *:* rwm')
+cfg_true host_pid && unprotected+=(--pid=host)
 
 fail=0
-grep -q "service hetrixtools successfully started" "$log" \
-  || { echo "FAIL: s6-rc never started the hetrixtools service (is it in the user bundle?)"; fail=1; }
-grep -q "dry_run enabled" "$log" \
-  || { echo "FAIL: bashio never read the stub options (dry_run not seen)"; fail=1; }
-grep -q "Starting HetrixTools agent loop" "$log" \
-  || { echo "FAIL: run script did not reach the agent loop within ${TIMEOUT}s"; fail=1; }
-# s6-overlay prints deprecations from rc.init. They are warnings today and
-# boot failures in the next major, so treat them as failures here.
-if grep -E "rc\.init: (warning|fatal)" "$log"; then
-  echo "FAIL: s6-overlay init reported the line(s) above"
-  fail=1
-fi
-if grep -E "\] ERROR: " "$log"; then
-  echo "FAIL: bashio logged an error"
-  fail=1
-fi
+# Usage: boot <label> [docker run args...]
+boot() {
+  local label="$1"; shift
+  echo "==== boot: ${label} ($*)"
+  cid="$(docker run -d --platform "$PLATFORM" "$@" \
+    --add-host supervisor:host-gateway \
+    -e SUPERVISOR_API="http://supervisor:${PORT}" \
+    -e SUPERVISOR_TOKEN=boot-test \
+    "$IMAGE")"
+
+  for _ in $(seq 1 "$TIMEOUT"); do
+    docker logs "$cid" >"$log" 2>&1 || true
+    grep -q "Starting HetrixTools agent loop" "$log" && break
+    # A container that already exited (s6 refusing to start, say) will not
+    # get any further; stop waiting.
+    [ "$(docker inspect -f '{{.State.Running}}' "$cid")" = true ] || break
+    sleep 1
+  done
+  docker logs "$cid" >"$log" 2>&1 || true
+  cat "$log"
+  echo "----"
+
+  grep -q "service hetrixtools successfully started" "$log" \
+    || { echo "FAIL (${label}): s6-rc never started the hetrixtools service (is it in the user bundle?)"; fail=1; }
+  grep -q "dry_run enabled" "$log" \
+    || { echo "FAIL (${label}): bashio never read the stub options (dry_run not seen)"; fail=1; }
+  grep -q "Starting HetrixTools agent loop" "$log" \
+    || { echo "FAIL (${label}): run script did not reach the agent loop within ${TIMEOUT}s"; fail=1; }
+  # s6-overlay prints deprecations from rc.init. They are warnings today and
+  # boot failures in the next major, so treat them as failures here.
+  if grep -E "rc\.init: (warning|fatal)" "$log"; then
+    echo "FAIL (${label}): s6-overlay init reported the line(s) above"
+    fail=1
+  fi
+  if grep -E "\] ERROR: " "$log"; then
+    echo "FAIL (${label}): bashio logged an error"
+    fail=1
+  fi
+
+  docker rm -f "$cid" >/dev/null 2>&1 || true
+  cid=""
+}
+
+boot "protection mode on" "${protected[@]}"
+boot "protection mode off" "${unprotected[@]}"
 
 [ "$fail" -eq 0 ] && echo "BOOT OK"
 exit "$fail"
