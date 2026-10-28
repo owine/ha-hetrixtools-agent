@@ -12,3 +12,7 @@ Add this repository to your Home Assistant app store:
 4. Install **HetrixTools Agent**, set your Server ID, and start the app.
 
 For complete documentation including all configuration options and HA OS caveats, see [hetrixtools-agent/DOCS.md](hetrixtools-agent/DOCS.md).
+
+## License
+
+[MIT](LICENSE), except the bundled HetrixTools agent script (`hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh`), which is copyright HetrixTools and not covered by this license. See [LICENSE](LICENSE) for details.

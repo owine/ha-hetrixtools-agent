@@ -116,3 +116,7 @@ The HetrixTools agent binary is vendored inside this app at v2.4.1. It does not 
 ## Support
 
 Report bugs and ask questions in the [GitHub issue tracker](https://github.com/owine/ha-hetrixtools-agent/issues). Include the app's **Log** tab output, ideally with `debug` on. For problems with the HetrixTools service itself, contact HetrixTools.
+
+## License
+
+This app is released under the [MIT License](https://github.com/owine/ha-hetrixtools-agent/blob/main/LICENSE). The bundled HetrixTools agent script (`hetrixtools_agent.sh`) is not covered by it: it is copyright HetrixTools, included with small modifications, and remains under their terms.
