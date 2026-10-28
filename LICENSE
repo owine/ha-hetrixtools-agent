@@ -31,6 +31,6 @@ HetrixTools Server Monitoring Agent, copyright 2015 - 2026 HetrixTools
   hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh
 
 It is included with small modifications for running inside a Home Assistant
-app, marked in the file with ">>> ha-app patch >>>". It remains under the
-terms set by HetrixTools, including the disclaimer of warranty at the top of
-the file.
+app, each between a "# >>> ha-app patch" and a "# <<< ha-app patch <<<"
+comment. It remains under the terms set by HetrixTools, including the
+disclaimer of warranty at the top of the file.
