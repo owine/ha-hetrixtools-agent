@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.3](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.2...hetrixtools-agent-v0.2.3) (2026-10-28)
+
+**1 bug fix · 2 dependency updates**
+
+### 🐛 Bug Fixes
+
+- drop host_pid so the app boots with protection mode off ([#59](https://github.com/owine/ha-hetrixtools-agent/issues/59))
+  - The app starts with protection mode off again. It used to request the host's process namespace, which the Supervisor grants only with protection mode off, and the app's init system refuses to run inside it.
+  - SMART drive health now gets the capabilities it needs: `SYS_RAWIO` for SATA disks and `SYS_ADMIN` for NVMe drives. Drive health and software RAID status still need protection mode off, which gives the app access to the disks.
+  - ICMP outgoing pings now request the `NET_RAW` capability explicitly, so they keep working once the Supervisor stops granting it by default.
+  - The Configuration tab now shows a readable name and help text for every option.
+  - `running_processes` and `check_services` see only the app's own processes. This was already true with protection mode on.
+  - The documentation explains what protection mode changes and why the app asks for each privilege, and has new troubleshooting and support sections.
+  - The app is now MIT licensed. The bundled HetrixTools agent script stays under HetrixTools' own terms.
+
+### 📦 Dependencies
+
+- update ghcr.io/home-assistant/base:3.24 docker digest to 89f3a85 ([#55](https://github.com/owine/ha-hetrixtools-agent/issues/55), [#58](https://github.com/owine/ha-hetrixtools-agent/issues/58))
+- update curl apk package to v8.23.0-r0 ([#54](https://github.com/owine/ha-hetrixtools-agent/issues/54))
+
 ## [0.2.2](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.1...hetrixtools-agent-v0.2.2) (2026-10-13)
 
 
