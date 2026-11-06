@@ -70,8 +70,10 @@ while true; do
 	# The agent writes diagnostics to a file beside itself, on tmpfs, where the
 	# Log tab never sees them. Surface each cycle's worth and truncate, so the
 	# log cannot grow without bound across a long-running debug session.
+	# The SID is shortened on the way, as above: users paste this log into
+	# public issues (see redact-sid.sh).
 	if [ -s "$RUN_DIR/debug.log" ]; then
-		cat "$RUN_DIR/debug.log"
+		bash "$LIB/redact-sid.sh" "$SID" < "$RUN_DIR/debug.log"
 		: > "$RUN_DIR/debug.log"
 	fi
 	elapsed=$(( $(date +%s) - start ))
