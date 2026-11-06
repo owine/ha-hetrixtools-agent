@@ -13,6 +13,15 @@ name: Build
     types: [released]
 permissions:
   contents: read
+# One release run at a time, so two releases published close together cannot
+# finish out of order and leave `latest` on the older one: the later run's
+# release gate sees the version the earlier one promoted. A running release
+# is never cancelled, but GitHub keeps only one waiting run per group, so a
+# third release published meanwhile replaces the waiting one, and the store
+# goes straight to the newest. Push runs only build; each gets its own group.
+concurrency:
+  group: ${{ github.event_name == 'release' && 'release' || github.run_id }}
+  cancel-in-progress: false
 env:
   # Single source of truth for the build matrix + image name (kept in sync
   # across the matrix and the manifest job).
@@ -39,11 +48,10 @@ jobs:
       # the tagged config.yaml still holds the previous version, because the
       # promote job below only bumps it after the image is published. The
       # builder action stamps it into the image's io.hass.version label.
-      # Validated here, before anything is pushed, so a hand-made tag, a
-      # prerelease or a release cut off main cannot publish an image or move
-      # `latest`. promote repeats the on-main check against the main commit it
-      # writes to. This file comes from the tagged commit, so these checks stop
-      # mistakes; the release-tags ruleset is what stops anyone else tagging.
+      # On a release, release-gate.sh validates the release before anything is
+      # pushed (tag shape, not a prerelease, on main, not older than what HA
+      # offers) and prints its version. build and manifest run it again
+      # themselves; see the script for why.
       - name: Read app version
         id: meta
         shell: bash
@@ -54,45 +62,13 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           if [ "${GITHUB_EVENT_NAME}" = release ]; then
-            [[ "${TAG_NAME}" == hetrixtools-agent-v* ]] || {
-              echo "::error::tag ${TAG_NAME} is not a release tag (hetrixtools-agent-vX.Y.Z)"
-              exit 1; }
-            [ "${PRERELEASE}" = false ] || {
-              echo "::error::${TAG_NAME} is a prerelease; only full releases are built"
-              exit 1; }
-            # Resolved to a SHA first, as promote does: a bare `main` in the
-            # compare would be ambiguous if a tag named main ever existed.
-            main_sha="$(gh api "repos/${REPO}/git/ref/heads/main" --jq .object.sha)"
-            status="$(gh api "repos/${REPO}/compare/${GITHUB_SHA}...${main_sha}" --jq .status)"
-            if [ "${status}" != identical ] && [ "${status}" != ahead ]; then
-              echo "::error::release commit ${GITHUB_SHA} is not on main (${status}); not building it"
-              exit 1
-            fi
-            version="${TAG_NAME#hetrixtools-agent-v}"
+            version="$(bash .github/scripts/release-gate.sh)"
           else
             version="$(grep -E '^version:' hetrixtools-agent/config.yaml \
               | sed -E 's/.*"([^"]+)".*/\1/')"
           fi
           [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "::error::unexpected version '${version}'"; exit 1; }
-          # `latest` only moves forward. main's config.yaml holds the version
-          # HA offers now (promote bumps it once a release ships), so an older
-          # release, whether re-run or published late, must not push `latest`
-          # back over it. The same version passes: promote then leaves
-          # config.yaml alone, as it already does.
-          if [ "${GITHUB_EVENT_NAME}" = release ]; then
-            current="$(gh api -H "Accept: application/vnd.github.raw" \
-                "repos/${REPO}/contents/hetrixtools-agent/config.yaml?ref=${main_sha}" \
-              | sed -nE 's/^version: "([^"]+)".*/\1/p')"
-            [[ "${current}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-              echo "::error::no 'version: \"X.Y.Z\"' line in config.yaml on main (got '${current}')"
-              exit 1; }
-            newest="$(printf '%s\n%s\n' "${current}" "${version}" | sort -V | tail -n1)"
-            if [ "${newest}" != "${version}" ]; then
-              echo "::error::release ${version} is older than ${current}, which HA already offers; not building it"
-              exit 1
-            fi
-          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       # This step owns the runner label for the `build` job below. The action
       # maps each architecture to a runner OS internally, so there is no
@@ -124,6 +100,15 @@ jobs:
       matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Release gate
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: bash .github/scripts/release-gate.sh
       - name: Build & push ${{ matrix.arch }}
         uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
@@ -148,9 +133,20 @@ jobs:
     if: github.event_name == 'release'
     runs-on: ubuntu-26.04
     permissions:
+      contents: read  # checkout and the release gate
       packages: write
       id-token: write  # keyless cosign signing of the manifest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Release gate
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: bash .github/scripts/release-gate.sh
       - name: Publish multi-arch manifest
         uses: home-assistant/builder/actions/publish-multi-arch-manifest@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
@@ -365,5 +361,10 @@ jobs:
 
           Fix the cause, then re-run the failed jobs. \`promote\` is idempotent and
           will not downgrade the store if a newer release has shipped since.
+
+          If the run failed at the release gate because this release is a
+          prerelease, is not on main, or is older than the version HA already
+          offers, that is the gate working: there is nothing to re-run, so close
+          this issue.
           BODY
           )"
