@@ -37,9 +37,10 @@ probe_with_rtt_line() {
 @test "an RTT field that is not a number is read as data, never as awk code" {
   # Not something iputils prints; it stands in for any non-numeric text in
   # that field. Upstream pasted the field into the awk program, where this is
-  # a syntax error and the RTT comes out empty. Both busybox awk (what the
-  # image ships) and gawk prefix their errors with "awk: ".
+  # a syntax error and the RTT comes out empty. busybox awk (what the image
+  # ships), gawk and mawk all print errors containing "awk: ". Read as data,
+  # awk takes the leading numeric part, 12.3 ms.
   probe_with_rtt_line "rtt min/avg/max/mdev = 10.101/12.3)/15.202/1.100 ms"
   [[ "$output" != *"awk: "* ]]
-  [[ "$(cat "$WORK/ping.txt")" =~ ^gw,192\.0\.2\.1,0,[0-9]+\;$ ]]
+  [ "$(cat "$WORK/ping.txt")" = "gw,192.0.2.1,0,12300;" ]
 }
