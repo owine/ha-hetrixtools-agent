@@ -1,2 +1,10 @@
 *.log
 .DS_Store
+
+# Secrets and real config that must never be committed. The SID is the
+# server's only credential; a locally rendered cfg contains it in full.
+.env
+.env.*
+*.pem
+*.key
+hetrixtools.cfg
