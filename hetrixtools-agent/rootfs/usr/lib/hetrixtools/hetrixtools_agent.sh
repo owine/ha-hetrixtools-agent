@@ -598,7 +598,12 @@ function icmppingstatus() {
 	local RTT_LINE
 	local AVG_RTT
 	PING_OUTPUT=$(ping "$PingTarget" -c "$OutgoingPingsCount" 2>/dev/null)
-	if [ "$DEBUG" -eq 1 ]; then echo -e "$ScriptStartTime-$(date +%T])PING_OUTPUT:\n$PING_OUTPUT" >> "$ScriptPath"/debug.log; fi
+	# >>> ha-app patch: raw probe output logged verbatim and indented (re-apply after upstream bump) >>>
+	# Probe output comes from the network, and run copies debug.log into the
+	# Log tab. Print it as-is (no echo -e escapes) and indented, so it cannot
+	# start a log line of its own.
+	if [ "$DEBUG" -eq 1 ]; then { echo "$ScriptStartTime-$(date +%T])PING_OUTPUT:"; printf '%s\n' "$PING_OUTPUT" | sed 's/^/    /'; } >> "$ScriptPath"/debug.log; fi
+	# <<< ha-app patch <<<
 	PACKET_LOSS=$(echo "$PING_OUTPUT" | grep -o '[0-9]\+% packet loss' | cut -d'%' -f1)
 	if [ "$DEBUG" -eq 1 ]; then echo -e "$ScriptStartTime-$(date +%T])PACKET_LOSS: $PACKET_LOSS" >> "$ScriptPath"/debug.log; fi
 	if [ -z "$PACKET_LOSS" ]
@@ -660,7 +665,13 @@ function tcppingstatus() {
 		then
 			if [ -n "$ProbeOutput" ]
 			then
-				echo -e "$ScriptStartTime-$(date +%T]) TCP sample $SampleIndex/$SampleCount raw output via $ProbeMethod ($TCPProbeLastCommand):\n$ProbeOutput" >> "$ScriptPath"/debug.log
+				# >>> ha-app patch: raw probe output logged verbatim and indented (re-apply after upstream bump) >>>
+				# What the probed service answered: see the matching patch in icmppingstatus.
+				{
+					echo -e "$ScriptStartTime-$(date +%T]) TCP sample $SampleIndex/$SampleCount raw output via $ProbeMethod ($TCPProbeLastCommand):"
+					printf '%s\n' "$ProbeOutput" | sed 's/^/    /'
+				} >> "$ScriptPath"/debug.log
+				# <<< ha-app patch <<<
 			else
 				echo -e "$ScriptStartTime-$(date +%T]) TCP sample $SampleIndex/$SampleCount raw output via $ProbeMethod ($TCPProbeLastCommand): <empty>" >> "$ScriptPath"/debug.log
 			fi
