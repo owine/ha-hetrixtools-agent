@@ -13,7 +13,9 @@
 # - Control characters other than tab and newline become "?". debug.log holds
 #   raw probe output, which comes from the network: an escape sequence would
 #   otherwise reach the reader's terminal, and a carriage return could
-#   overwrite the start of a line.
+#   overwrite the start of a line. That includes the C1 controls as UTF-8
+#   encodes them (U+0080-U+009F, such as CSI). A CRLF line end just loses its
+#   carriage return.
 set -euo pipefail
 
 SID="${1:-}"
@@ -24,4 +26,7 @@ if [[ ! "$SID" =~ ^[A-Za-z0-9]{32}$ ]]; then
 	exit 2
 fi
 
-sed "s/${SID}/${SID:0:6}…/g" | tr '\000-\010\013-\037\177' '?'
+# Byte-wise (LC_ALL=C), so the C1 pattern matches the two UTF-8 bytes and
+# other UTF-8 passes through untouched.
+LC_ALL=C sed -e "s/${SID}/${SID:0:6}…/g" -e $'s/\r$//' -e $'s/\xc2[\x80-\x9f]/?/g' \
+	| tr '\000-\010\013-\037\177' '?'

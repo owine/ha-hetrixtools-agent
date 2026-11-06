@@ -36,3 +36,18 @@ again $SID and $SID"
   [ "$status" -eq 0 ]
   [ "$output" = $'a?[31mb?c\td?e?f' ]
 }
+
+@test "drops the carriage return of a CRLF line end rather than marking it" {
+  # TCP banners and HTTP headers end lines in \r\n; only a stray \r is odd.
+  run bash "$FILTER" "$SID" < <(printf 'HTTP/1.1 200 OK\r\nx\ry\n')
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = 'HTTP/1.1 200 OK' ]
+  [ "${lines[1]}" = 'x?y' ]
+}
+
+@test "replaces UTF-8 C1 controls, and leaves other UTF-8 alone" {
+  # U+009B is CSI, which some terminals act on like ESC [.
+  run bash "$FILTER" "$SID" < <(printf 'a\xc2\x9b31mb é – ✓ …\n')
+  [ "$status" -eq 0 ]
+  [ "$output" = 'a?31mb é – ✓ …' ]
+}
