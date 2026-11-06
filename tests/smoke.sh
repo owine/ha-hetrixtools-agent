@@ -23,6 +23,7 @@ docker run --rm --platform linux/amd64 --entrypoint bash hetrixtools-agent:smoke
   cp "$LIB/hetrixtools_agent.sh" /tmp/hetrixtools_agent.sh
   cd /tmp
   DryRun=1 timeout 90 bash /tmp/hetrixtools_agent.sh | tee /tmp/out
-  grep -q "j=" /tmp/out
+  grep -qF "\"SID\":\"abcdef…\"" /tmp/out
+  ! grep -qF "$SID" /tmp/out
 '
 echo "SMOKE OK"

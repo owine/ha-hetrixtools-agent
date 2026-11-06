@@ -2074,13 +2074,17 @@ jsoncomp=$(echo -ne "$json" | gzip -cf | base64 -w 0 | sed 's/ //g' | sed 's/\//
 # Save data to file
 echo "j=$jsoncomp" > "$ScriptPath"/hetrixtools_agent.log
 
-# >>> ha-app patch: dry_run guard (re-apply after upstream bump) >>>
+# >>> ha-app patch: dry_run guard, SID kept out of diagnostics (re-apply after upstream bump) >>>
+# Both diagnostics below end up in the Log tab, which DOCS.md asks users to
+# paste into public issues. The SID is the server's only credential, so show
+# just enough of it to tell servers apart, as the run script does.
+json_shown="${json//"$SID"/"${SID:0:6}…"}"
 if [ "${DryRun:-0}" = "1" ]; then
-	echo "[hetrixtools][dry_run] would POST payload (no network call):"
-	cat "$ScriptPath/hetrixtools_agent.log"
+	echo "[hetrixtools][dry_run] would POST this payload, gzipped and base64-encoded (no network call):"
+	echo "$json_shown"
 elif [ "$DEBUG" -eq 1 ]
 then
-	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json" >> "$ScriptPath"/debug.log
+	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json_shown" >> "$ScriptPath"/debug.log
 	# Post data
 	echo -e "$ScriptStartTime-$(date +%T]) Posting data" >> "$ScriptPath"/debug.log
 	wget -v --debug --retry-connrefused --waitretry=1 -t 3 -T 15 -O- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &>> "$ScriptPath"/debug.log
