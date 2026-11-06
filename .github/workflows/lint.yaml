@@ -45,4 +45,4 @@ jobs:
           command -v bats >/dev/null || {
             sudo apt-get update && sudo apt-get install -y bats
           }
-          bats tests/render-config.bats tests/detect-interfaces.bats tests/redact-sid.bats tests/dry-run.bats
+          bats tests/render-config.bats tests/detect-interfaces.bats tests/redact-sid.bats tests/ping-rtt.bats tests/dry-run.bats
