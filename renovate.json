@@ -24,7 +24,7 @@
       "registryUrls": ["https://dl-cdn.alpinelinux.org/alpine?branch=v3.24&components=main,community&arch=x86_64"]
     },
     {
-      "description": "Vendored HetrixTools agent — NEVER automerge, at any update type. The bump only moves the `upstream-agent.version` marker; the agent script itself is vendored in-tree and must be re-fetched by hand with the `>>> ha-app patch >>>` patches (dry_run, SID kept out of diagnostics, ping RTT passed to awk as data, raw probe output logged indented, TCP probe target passed as arguments) re-applied (see hetrixtools-agent/DOCS.md). Without this rule the marker is swept into :automerge's 'all non-major dependencies' bundle and merged unattended, leaving the marker claiming a version the vendored script isn't.",
+      "description": "Vendored HetrixTools agent — NEVER automerge, at any update type. The bump only moves the `upstream-agent.version` marker; the agent script itself is vendored in-tree and must be re-fetched by hand with the `>>> ha-app patch >>>` patches (dry_run, SID kept out of diagnostics, ping RTT passed to awk as data, raw probe output logged indented, TCP probe target passed as arguments) re-applied and upstream-agent.sha256 updated (see hetrixtools-agent/DOCS.md); Lint's 'vendored agent vs upstream' step fails until that is done. Without this rule the marker is swept into :automerge's 'all non-major dependencies' bundle and merged unattended, leaving the marker claiming a version the vendored script isn't.",
       "matchDatasources": ["github-tags"],
       "matchPackageNames": ["hetrixtools/agent"],
       "groupName": "hetrixtools agent",

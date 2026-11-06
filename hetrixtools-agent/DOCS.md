@@ -114,7 +114,7 @@ The app does not use the host's process namespace (`host_pid`). The init system 
 
 ## Maintenance and updates
 
-The HetrixTools agent binary is vendored inside this app at v2.4.1. It does not self-update. When HetrixTools releases a new agent version, a Renovate PR will be opened on the repository bumping `hetrixtools-agent/upstream-agent.version`. That PR is the signal to re-vendor the agent and re-apply the small patches that add `dry_run`, keep the full SID out of the diagnostics, pass the ping RTT to `awk` as data, log raw probe output indented, and pass TCP probe targets to `bash -c` as arguments (look for `>>> ha-app patch >>>` markers in `hetrixtools_agent.sh`). App updates are then delivered through the normal HA app update flow.
+The HetrixTools agent binary is vendored inside this app at v2.4.1. It does not self-update. When HetrixTools releases a new agent version, a Renovate PR will be opened on the repository bumping `hetrixtools-agent/upstream-agent.version`. That PR is the signal to re-vendor the agent and re-apply the small patches that add `dry_run`, keep the full SID out of the diagnostics, pass the ping RTT to `awk` as data, log raw probe output indented, and pass TCP probe targets to `bash -c` as arguments (look for `>>> ha-app patch >>>` markers in `hetrixtools_agent.sh`), then record the new upstream file's sha256 in `hetrixtools-agent/upstream-agent.sha256`. CI downloads the upstream release named in `upstream-agent.version`, checks that hash, and fails if the vendored script differs from it anywhere outside a patch block. App updates are then delivered through the normal HA app update flow.
 
 ## Support
 
