@@ -1,0 +1,6 @@
+# <upstream lines replaced> <sha256/16 of them> <block title>; see tests/upstream-delta.py
+12 d97dd68016bc0e4c TCP probe target passed to bash -c as arguments (re-apply after upstream bump)
+1 01d667015aac3f90 raw probe output logged verbatim and indented (re-apply after upstream bump)
+1 21a43e2d3579fc49 ping RTT passed to awk as data (re-apply after upstream bump)
+1 66ec358a5f78f413 raw probe output logged verbatim and indented (re-apply after upstream bump)
+11 e0c7b44e3404208f dry_run guard, SID kept out of diagnostics (re-apply after upstream bump)
