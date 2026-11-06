@@ -4,8 +4,13 @@ name: Build
   push:
     branches: [main]
     paths: ["hetrixtools-agent/**"]
+  # `released`, not `published`: it fires when a full release is published or
+  # a prerelease is turned into one, and never for a prerelease. With
+  # `published`, a prerelease would fail init below (and open a failure
+  # issue), and promoting it later would not build at all. Listing both would
+  # build every full release twice.
   release:
-    types: [published]
+    types: [released]
 permissions:
   contents: read
 env:
@@ -55,7 +60,10 @@ jobs:
             [ "${PRERELEASE}" = false ] || {
               echo "::error::${TAG_NAME} is a prerelease; only full releases are built"
               exit 1; }
-            status="$(gh api "repos/${REPO}/compare/${GITHUB_SHA}...main" --jq .status)"
+            # Resolved to a SHA first, as promote does: a bare `main` in the
+            # compare would be ambiguous if a tag named main ever existed.
+            main_sha="$(gh api "repos/${REPO}/git/ref/heads/main" --jq .object.sha)"
+            status="$(gh api "repos/${REPO}/compare/${GITHUB_SHA}...${main_sha}" --jq .status)"
             if [ "${status}" != identical ] && [ "${status}" != ahead ]; then
               echo "::error::release commit ${GITHUB_SHA} is not on main (${status}); not building it"
               exit 1
@@ -148,7 +156,7 @@ jobs:
     if: github.event_name == 'release'
     runs-on: ubuntu-26.04
     # The App secrets live in the `release` environment, which only main and
-    # hetrixtools-agent-v* tags can deploy to (a release: published run is on
+    # hetrixtools-agent-v* tags can deploy to (a release run is on
     # its tag, so it qualifies). The App can bypass the main ruleset, so its key
     # must not be readable from a workflow on another branch.
     environment: release
