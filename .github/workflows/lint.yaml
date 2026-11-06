@@ -25,7 +25,7 @@ jobs:
           shellcheck --version
           shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/render-config.sh
           shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/detect-interfaces.sh
-          shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/redact-sid.sh
+          shellcheck -x hetrixtools-agent/rootfs/usr/lib/hetrixtools/debug-log-filter.sh
           shellcheck -s bash hetrixtools-agent/rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/run
           shellcheck tests/smoke.sh
           shellcheck tests/boot.sh
@@ -46,5 +46,5 @@ jobs:
           command -v bats >/dev/null || {
             sudo apt-get update && sudo apt-get install -y bats
           }
-          bats tests/render-config.bats tests/detect-interfaces.bats tests/redact-sid.bats \
+          bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
             tests/ping-rtt.bats tests/probe-debug-log.bats tests/release-gate.bats tests/dry-run.bats
