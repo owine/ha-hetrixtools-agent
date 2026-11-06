@@ -579,14 +579,14 @@ function tcpportprobe() {
 	# pingstatus, but the script should not rely on that.
 	if [ "$ProbeMethod" == "devtcp" ]
 	then
-		TCPProbeLastCommand="bash -c exec 3<>/dev/tcp/$PingTarget/$PingPort"
+		TCPProbeLastCommand="bash -c 'exec 3<>\"/dev/tcp/\$1/\$2\"' tcpprobe $PingTarget $PingPort"
 		# shellcheck disable=SC2016  # $1/$2 are expanded by the inner bash
 		runwithtimeout "$ProbeTimeout" bash -c 'exec 3<>"/dev/tcp/$1/$2"' tcpprobe "$PingTarget" "$PingPort"
 		return $?
 	fi
 	if [ "$ProbeMethod" == "telnet" ]
 	then
-		TCPProbeLastCommand="bash -c printf 'quit\\n' | telnet $PingTarget $PingPort"
+		TCPProbeLastCommand="bash -c 'printf quit | telnet \"\$1\" \"\$2\"' tcpprobe $PingTarget $PingPort"
 		# shellcheck disable=SC2016  # $1/$2 are expanded by the inner bash
 		runwithtimeout "$ProbeTimeout" bash -c 'printf "quit\n" | telnet "$1" "$2"' tcpprobe "$PingTarget" "$PingPort"
 		return $?
