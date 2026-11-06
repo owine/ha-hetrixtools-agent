@@ -610,7 +610,13 @@ function icmppingstatus() {
 	if [ -n "$RTT_LINE" ]
 	then
 		AVG_RTT=$(echo "$RTT_LINE" | awk -F'/' '{print $5}')
-		AVG_RTT=$(echo | awk "{print $AVG_RTT * 1000}" | awk '{printf "%18.0f",$1}' | xargs)
+		# >>> ha-app patch: ping RTT passed to awk as data (re-apply after upstream bump) >>>
+		# Upstream pasted this field into the awk program text. It is ping
+		# output, which the agent does not control, so hand it to awk as a
+		# variable: it can no longer change the program, and awk reads a
+		# value that is not a number as its leading numeric part, or 0.
+		AVG_RTT=$(echo | awk -v rtt="$AVG_RTT" '{print rtt * 1000}' | awk '{printf "%18.0f",$1}' | xargs)
+		# <<< ha-app patch <<<
 	else
 		AVG_RTT="0"
 	fi
