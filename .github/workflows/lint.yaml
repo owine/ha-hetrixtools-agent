@@ -48,18 +48,21 @@ jobs:
           }
           bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
             tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
-            tests/release-gate.bats tests/dry-run.bats
+            tests/release-gate.bats tests/upstream-delta.bats tests/dry-run.bats
       # The vendored agent must be the upstream release named in
-      # upstream-agent.version (checked by hash) plus only the ha-app patch
-      # blocks. A Renovate bump of the version marker alone fails here until
-      # the agent is re-vendored and upstream-agent.sha256 updated. The download
-      # is only hashed and read as text, never run.
+      # upstream-agent.version (checked by hash) plus only the patch blocks
+      # declared in upstream-agent.patches. A Renovate bump of the version
+      # marker alone fails here until the agent is re-vendored and both files
+      # updated. The download is only hashed and read as text, never run.
       - name: vendored agent vs upstream
         run: |
           version="$(cat hetrixtools-agent/upstream-agent.version)"
+          [[ "${version}" =~ ^[0-9]+(\.[0-9]+)+$ ]] || {
+            echo "::error::upstream-agent.version is not a release number: '${version}'"; exit 1; }
           upstream="${RUNNER_TEMP}/upstream-hetrixtools_agent.sh"
           curl -fsSL --retry 3 -o "${upstream}" \
-            "https://raw.githubusercontent.com/hetrixtools/agent/${version}/hetrixtools_agent.sh"
-          echo "$(cat hetrixtools-agent/upstream-agent.sha256)  ${upstream}" | sha256sum -c -
+            "https://raw.githubusercontent.com/hetrixtools/agent/refs/tags/${version}/hetrixtools_agent.sh"
+          echo "$(cat hetrixtools-agent/upstream-agent.sha256)  ${upstream}" | sha256sum --strict -c -
           python3 -I tests/upstream-delta.py "${upstream}" \
-            hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh
+            hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh \
+            hetrixtools-agent/upstream-agent.patches
