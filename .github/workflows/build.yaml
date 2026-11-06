@@ -75,6 +75,24 @@ jobs:
           fi
           [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "::error::unexpected version '${version}'"; exit 1; }
+          # `latest` only moves forward. main's config.yaml holds the version
+          # HA offers now (promote bumps it once a release ships), so an older
+          # release, whether re-run or published late, must not push `latest`
+          # back over it. The same version passes: promote then leaves
+          # config.yaml alone, as it already does.
+          if [ "${GITHUB_EVENT_NAME}" = release ]; then
+            current="$(gh api -H "Accept: application/vnd.github.raw" \
+                "repos/${REPO}/contents/hetrixtools-agent/config.yaml?ref=${main_sha}" \
+              | sed -nE 's/^version: "([^"]+)".*/\1/p')"
+            [[ "${current}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "::error::no 'version: \"X.Y.Z\"' line in config.yaml on main (got '${current}')"
+              exit 1; }
+            newest="$(printf '%s\n%s\n' "${current}" "${version}" | sort -V | tail -n1)"
+            if [ "${newest}" != "${version}" ]; then
+              echo "::error::release ${version} is older than ${current}, which HA already offers; not building it"
+              exit 1
+            fi
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       # This step owns the runner label for the `build` job below. The action
       # maps each architecture to a runner OS internally, so there is no
