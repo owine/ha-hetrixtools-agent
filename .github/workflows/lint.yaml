@@ -9,6 +9,9 @@ name: Lint
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+# Runs PR code (bats tests, shell scripts), so the token only gets to read.
+permissions:
+  contents: read
 jobs:
   lint:
     name: Lint all
