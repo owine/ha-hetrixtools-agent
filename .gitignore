@@ -8,3 +8,6 @@
 *.pem
 *.key
 hetrixtools.cfg
+
+# A copy of a rendered cfg holds the SID too.
+hetrixtools.cfg.*
