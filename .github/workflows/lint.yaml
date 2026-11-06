@@ -47,4 +47,5 @@ jobs:
             sudo apt-get update && sudo apt-get install -y bats
           }
           bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
-            tests/ping-rtt.bats tests/probe-debug-log.bats tests/release-gate.bats tests/dry-run.bats
+            tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
+            tests/release-gate.bats tests/dry-run.bats
