@@ -19,14 +19,17 @@ if [ -z "${SID:-}" ]; then
 	exit 1
 fi
 
-# Each value becomes one line of the cfg, so a line break in one would start a
-# cfg line of its own (SecuredConnection=0, say). Refuse rather than repair it.
+# Each value becomes one line of the cfg, so a newline in one would start a
+# cfg line of its own (SecuredConnection=0, say). A carriage return would stay
+# inside the value, but nothing legitimate contains one either. Refuse rather
+# than repair. tests/render-config.bats checks this list against the template.
 for var in SID COLLECT_EVERY_SECONDS CHECK_SERVICES CHECK_SOFT_RAID \
 	CHECK_DRIVE_HEALTH CHECK_REBOOT RUNNING_PROCESSES CONNECTION_PORTS \
 	NETWORK_INTERFACES IGNORED_DISKS DEBUG_MODE OUTGOING_PINGS OUTGOING_PINGS_COUNT; do
 	case "${!var:-}" in
 		*$'\n'* | *$'\r'*)
-			echo "render-config: ${var} must not contain a line break" >&2
+			# Most of these are an app option of the same name in lower case.
+			echo "render-config: ${var} (app option '${var,,}') must not contain a line break" >&2
 			exit 1
 			;;
 	esac
