@@ -41,7 +41,8 @@ requires_agent_host() {
   # backstop: if the stub were ever bypassed, the real wget fails to connect
   # instead of reaching HetrixTools.
   export WGET_CALLS="$WORK/wget-calls"
-  wget() { echo "stub wget $*" >> "$WGET_CALLS"; }
+  # It answers as the server would, with a line trying to pass as the agent's.
+  wget() { echo "stub wget $*" >> "$WGET_CALLS"; printf '%s\n' 'HTTP/1.1 200 OK' 'FORGED by the response'; }
   export -f wget
 
   run env https_proxy=http://127.0.0.1:9 http_proxy=http://127.0.0.1:9 \
@@ -53,4 +54,8 @@ requires_agent_host() {
   log="$(cat "$WORK/debug.log")"
   [[ "$log" == *'"SID":"abcdef…"'* ]]
   [[ "$log" != *"$SID"* ]]
+  # wget's debug output is the server's response: indented, never a line start.
+  grep -qx '    FORGED by the response' "$WORK/debug.log"
+  [ "$(grep -c '^FORGED' "$WORK/debug.log")" -eq 0 ]
+  [[ "$log" == *"Data posted"* ]]
 }

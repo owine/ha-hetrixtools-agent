@@ -668,7 +668,7 @@ function tcppingstatus() {
 				# >>> ha-app patch: raw probe output logged verbatim and indented (re-apply after upstream bump) >>>
 				# What the probed service answered: see the matching patch in icmppingstatus.
 				{
-					echo -e "$ScriptStartTime-$(date +%T]) TCP sample $SampleIndex/$SampleCount raw output via $ProbeMethod ($TCPProbeLastCommand):"
+					echo "$ScriptStartTime-$(date +%T]) TCP sample $SampleIndex/$SampleCount raw output via $ProbeMethod ($TCPProbeLastCommand):"
 					printf '%s\n' "$ProbeOutput" | sed 's/^/    /'
 				} >> "$ScriptPath"/debug.log
 				# <<< ha-app patch <<<
@@ -2105,7 +2105,9 @@ then
 	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json_shown" >> "$ScriptPath"/debug.log
 	# Post data
 	echo -e "$ScriptStartTime-$(date +%T]) Posting data" >> "$ScriptPath"/debug.log
-	wget -v --debug --retry-connrefused --waitretry=1 -t 3 -T 15 -O- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ &>> "$ScriptPath"/debug.log
+	# wget's debug output includes the server's response, so it is indented
+	# like raw probe output: nothing it says can start a log line.
+	wget -v --debug --retry-connrefused --waitretry=1 -t 3 -T 15 -O- --post-file="$ScriptPath/hetrixtools_agent.log" $SecuredConnection https://sm.hetrixtools.net/v2/ 2>&1 | sed 's/^/    /' >> "$ScriptPath"/debug.log
 	echo -e "$ScriptStartTime-$(date +%T]) Data posted" >> "$ScriptPath"/debug.log
 else
 	# Post data
