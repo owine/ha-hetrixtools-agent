@@ -2078,10 +2078,11 @@ echo "j=$jsoncomp" > "$ScriptPath"/hetrixtools_agent.log
 # Both diagnostics below end up in the Log tab, which DOCS.md asks users to
 # paste into public issues. The SID is the server's only credential, so show
 # just enough of it to tell servers apart, as the run script does.
-json_shown="${json//"$SID"/"${SID:0:6}…"}"
+json_shown="${json//"$SID"/${SID:0:6}…}"
 if [ "${DryRun:-0}" = "1" ]; then
 	echo "[hetrixtools][dry_run] would POST this payload, gzipped and base64-encoded (no network call):"
-	echo "$json_shown"
+	# %b expands escapes as the `echo -ne` that builds the real payload does.
+	printf '%b\n' "$json_shown"
 elif [ "$DEBUG" -eq 1 ]
 then
 	echo -e "$ScriptStartTime-$(date +%T]) JSON:\n$json_shown" >> "$ScriptPath"/debug.log

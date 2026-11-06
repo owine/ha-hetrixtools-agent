@@ -98,7 +98,7 @@ The app does not use the host's process namespace (`host_pid`). The init system 
 
 ## Troubleshooting
 
-**No data in HetrixTools after a few minutes:** Check that your `sid` is correct (exactly 32 alphanumeric characters). Enable `dry_run`, restart the app, and check the **Log** tab. You should see the payload that would be sent to HetrixTools, as readable JSON (it is gzipped and base64-encoded only when actually sent). If the payload looks correct, disable `dry_run` and restart again.
+**No data in HetrixTools after a few minutes:** Check that your `sid` is correct (exactly 32 alphanumeric characters). Enable `dry_run`, restart the app, and check the **Log** tab. You should see the payload that would be sent to HetrixTools, as readable JSON (it is gzipped and base64-encoded only when actually sent). With `dry_run` on, `debug` still logs the agent's checks but not the payload or the POST, since nothing is sent. If the payload looks correct, disable `dry_run` and restart again.
 
 **App fails to start:** Check that `sid` matches the 32-character pattern. An invalid SID stops the agent before it sends anything, and because the service is supervised you will see the start failure repeat in the **Log** tab until you correct the SID.
 
@@ -118,7 +118,7 @@ The HetrixTools agent binary is vendored inside this app at v2.4.1. It does not 
 
 ## Support
 
-Report bugs and ask questions in the [GitHub issue tracker](https://github.com/owine/ha-hetrixtools-agent/issues). Include the app's **Log** tab output, ideally with `debug` on. The app shows only the first six characters of your `sid` in the log, but read the output before posting it, and never paste your full `sid` or the contents of `hetrixtools.cfg`: anyone who has the SID can submit data as your server. For problems with the HetrixTools service itself, contact HetrixTools.
+Report bugs and ask questions in the [GitHub issue tracker](https://github.com/owine/ha-hetrixtools-agent/issues). Include the app's **Log** tab output, ideally with `debug` on. The app shows only the first six characters of your `sid` in the log, but read the output before posting it: with `dry_run` on it also shows your kernel, OS and CPU model in plain text. Never paste your full `sid` or the contents of `hetrixtools.cfg`: anyone who has the SID can submit data as your server. For problems with the HetrixTools service itself, contact HetrixTools.
 
 ## License
 
