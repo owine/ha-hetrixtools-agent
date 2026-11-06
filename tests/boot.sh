@@ -45,10 +45,16 @@ trap cleanup EXIT
 
 # Every option the run script reads, with dry_run on so nothing is POSTed.
 # The path is the one bashio::app.config requests:
-# GET /addons/self/options/config.
-mkdir -p "$stub/addons/self/options"
-cat > "$stub/addons/self/options/config" <<'JSON'
+# GET /addons/self/options/config. ignored_disks is optional (str?), and
+# bashio returns the literal string "null" for a missing option, so each boot
+# below sends it differently: missing, and "" (what a fresh install sends).
+# Both must render the default disk filter.
+# Usage: write_options '<extra JSON members, each ending in a comma>'
+write_options() {
+  mkdir -p "$stub/addons/self/options"
+  cat > "$stub/addons/self/options/config" <<JSON
 {"result": "ok", "data": {
+  $1
   "sid": "abcdefghijklmnopqrstuvwxyz012345",
   "collect_every_seconds": 3,
   "check_drive_health": false,
@@ -57,13 +63,14 @@ cat > "$stub/addons/self/options/config" <<'JSON'
   "running_processes": false,
   "connection_ports": [],
   "check_services": [],
-  "ignored_disks": "",
   "outgoing_pings": [],
   "outgoing_pings_count": 20,
   "dry_run": true,
   "debug": false
 }}
 JSON
+}
+write_options ''
 # Port 0 lets the OS pick a free port. http.server prints its "Serving HTTP
 # on ... port N" line only after binding, so waiting for that line both
 # discovers the port and closes the race with the container's first request.
@@ -145,6 +152,12 @@ boot() {
     || { echo "FAIL (${label}): bashio never read the stub options (dry_run not seen)"; fail=1; }
   grep -q "Starting HetrixTools agent loop" "$log" \
     || { echo "FAIL (${label}): run script did not reach the agent loop within ${TIMEOUT}s"; fail=1; }
+  if ! docker exec "$cid" grep -qxF 'IgnoredDisks="tmpfs|aufs|squashfs|container_tmp|^overlay"' \
+      /run/hetrixtools/hetrixtools.cfg; then
+    docker exec "$cid" grep '^IgnoredDisks=' /run/hetrixtools/hetrixtools.cfg || true
+    echo "FAIL (${label}): ignored_disks did not render the default disk filter"
+    fail=1
+  fi
   # s6-overlay prints deprecations from rc.init. They are warnings today and
   # boot failures in the next major, so treat them as failures here.
   if grep -E "rc\.init: (warning|fatal)" "$log"; then
@@ -160,8 +173,9 @@ boot() {
   cid=""
 }
 
-boot "protection mode on" "${protected[@]}"
-boot "protection mode off" "${unprotected[@]}"
+boot "protection mode on, ignored_disks missing" "${protected[@]}"
+write_options '"ignored_disks": "",'
+boot "protection mode off, ignored_disks empty" "${unprotected[@]}"
 
 [ "$fail" -eq 0 ] && echo "BOOT OK"
 exit "$fail"

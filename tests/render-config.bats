@@ -88,3 +88,29 @@ DF
   run bash "$RENDER" "$CFG"
   [ "$status" -ne 0 ]
 }
+
+# Each value becomes one `Key="value"` line of the cfg, so a newline in a
+# value would start a cfg line of its own, such as SecuredConnection=0.
+# ignored_disks is the one free-text option; the others are joined from
+# lists with the line breaks already replaced.
+@test "rejects a line break in a value rather than write a second cfg line" {
+  for brk in $'\n' $'\r'; do
+    rm -f "$CFG"
+    run env SID="abcdefghijklmnopqrstuvwxyz012345" \
+      IGNORED_DISKS="tmpfs${brk}SecuredConnection=0" bash "$RENDER" "$CFG"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"'ignored_disks'"* ]]
+    [ ! -e "$CFG" ]
+  done
+}
+
+@test "every value written to the cfg is checked for line breaks" {
+  # A variable added to the template but not to the guard would be written
+  # unchecked. Compare the two lists.
+  written="$(sed -n '/^cat > "\$CFG_PATH" <<EOF$/,/^EOF$/p' "$RENDER" \
+    | grep -oE '\$\{[A-Z_]+' | tr -d '${' | sort -u)"
+  guarded="$(sed -n '/^for var in /,/; do$/p' "$RENDER" \
+    | sed -e 's/^for var in //' -e 's/; do$//' | tr -s ' \t\\' '\n' | grep -E '^[A-Z_]+$' | sort -u)"
+  [ -n "$written" ]
+  [ "$written" = "$guarded" ]
+}
