@@ -37,6 +37,14 @@
       "matchPackageNames": ["hetrixtools/agent"],
       "matchUpdateTypes": ["minor", "major"],
       "semanticCommitType": "feat"
+    },
+    {
+      "description": "home-assistant/builder actions: NEVER automerge. On a release they run with `packages: write` and `id-token: write` (they push and cosign-sign the image HA pulls), and a digest bump can silently move the build runner OS (see the note on the Build matrix step in .github/workflows/build.yaml). So read the action source at the new digest before merging. Renovate's packageName for `home-assistant/builder/actions/<name>@sha` is `home-assistant/builder`, so this covers every builder action. Its own group keeps it out of :automerge's 'all non-major ci dependencies' group, where one non-automerge member would hold back every other CI update. Known limit: :default's vulnerabilityAlerts sets automerge after packageRules, so a security-advisory PR for the builder would still automerge.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["home-assistant/builder"],
+      "groupName": "home-assistant builder",
+      "automerge": false,
+      "addLabels": ["needs-review"]
     }
   ]
 }
