@@ -88,3 +88,18 @@ DF
   run bash "$RENDER" "$CFG"
   [ "$status" -ne 0 ]
 }
+
+# Each value becomes one `Key="value"` line of the cfg, so a line break in a
+# value would start a cfg line of its own, such as SecuredConnection=0.
+# ignored_disks is the one free-text option; the others are joined from
+# lists with the line breaks already replaced.
+@test "rejects a line break in a value rather than write a second cfg line" {
+  for brk in $'\n' $'\r'; do
+    rm -f "$CFG"
+    run env SID="abcdefghijklmnopqrstuvwxyz012345" \
+      IGNORED_DISKS="tmpfs${brk}SecuredConnection=0" bash "$RENDER" "$CFG"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"IGNORED_DISKS"* ]]
+    [ ! -e "$CFG" ]
+  done
+}

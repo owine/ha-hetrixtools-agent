@@ -44,6 +44,9 @@ cleanup() {
 trap cleanup EXIT
 
 # Every option the run script reads, with dry_run on so nothing is POSTed.
+# ignored_disks is left out on purpose: it is optional (str?), and bashio
+# returns the literal string "null" for a missing option unless given a
+# default, which would replace the default disk filter.
 # The path is the one bashio::app.config requests:
 # GET /addons/self/options/config.
 mkdir -p "$stub/addons/self/options"
@@ -57,7 +60,6 @@ cat > "$stub/addons/self/options/config" <<'JSON'
   "running_processes": false,
   "connection_ports": [],
   "check_services": [],
-  "ignored_disks": "",
   "outgoing_pings": [],
   "outgoing_pings_count": 20,
   "dry_run": true,
@@ -145,6 +147,12 @@ boot() {
     || { echo "FAIL (${label}): bashio never read the stub options (dry_run not seen)"; fail=1; }
   grep -q "Starting HetrixTools agent loop" "$log" \
     || { echo "FAIL (${label}): run script did not reach the agent loop within ${TIMEOUT}s"; fail=1; }
+  # The missing ignored_disks option must render the default filter.
+  if ! docker exec "$cid" grep -qF '^overlay"' /run/hetrixtools/hetrixtools.cfg; then
+    docker exec "$cid" grep '^IgnoredDisks=' /run/hetrixtools/hetrixtools.cfg || true
+    echo "FAIL (${label}): a missing ignored_disks did not render the default disk filter"
+    fail=1
+  fi
   # s6-overlay prints deprecations from rc.init. They are warnings today and
   # boot failures in the next major, so treat them as failures here.
   if grep -E "rc\.init: (warning|fatal)" "$log"; then

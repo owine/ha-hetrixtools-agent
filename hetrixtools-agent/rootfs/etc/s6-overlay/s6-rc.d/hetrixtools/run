@@ -24,8 +24,14 @@ export RUNNING_PROCESSES;     RUNNING_PROCESSES="$(bashio::config 'running_proce
 export CONNECTION_PORTS;      CONNECTION_PORTS="$(bashio::config 'connection_ports' | tr '\n' ',' | sed 's/,$//')"
 export CHECK_SERVICES;        CHECK_SERVICES="$(bashio::config 'check_services' | tr '\n' ',' | sed 's/,$//')"
 # Empty means "use the renderer's default", which excludes the container's own
-# overlay root as well as the filesystem types upstream already skips.
-export IGNORED_DISKS;         IGNORED_DISKS="$(bashio::config 'ignored_disks')"
+# overlay root as well as the filesystem types upstream already skips. The
+# option is optional, and bashio returns the literal string "null" for a
+# missing one; an empty default cannot fix that (bashio reads it as no
+# default), so ask has_value first.
+export IGNORED_DISKS=""
+if bashio::config.has_value 'ignored_disks'; then
+	IGNORED_DISKS="$(bashio::config 'ignored_disks')"
+fi
 export DEBUG_MODE;            DEBUG_MODE="$(bashio::config 'debug' | grep -q true && echo 1 || echo 0)"
 # The agent separates ping targets with '|', not ','; each entry is
 # name,host[,port] and may legitimately contain commas, so only the entry
