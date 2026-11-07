@@ -9,10 +9,10 @@
   ],
   "customManagers": [
     {
-      "description": "Track the vendored HetrixTools agent version (re-vendor on bump)",
+      "description": "Track the vendored HetrixTools agent version (re-vendor on bump). Renovate compiles matchStrings with only the `g` flag, so `$` means end of file: the earlier `^(?<currentValue>.*)$` never matched a file ending in a newline, and this dependency was never detected. `\\s*$` allows the trailing newline, and the digits pin it to a release number, which the Lint step requires too.",
       "customType": "regex",
       "managerFilePatterns": ["/hetrixtools-agent/upstream-agent.version/"],
-      "matchStrings": ["^(?<currentValue>.*)$"],
+      "matchStrings": ["^(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s*$"],
       "depNameTemplate": "hetrixtools/agent",
       "datasourceTemplate": "github-tags"
     }
