@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.3.0](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.3...hetrixtools-agent-v0.3.0) (2026-11-07)
+
+**1 feature · 7 bug fixes · 1 dependency update**
+
+### ✨ Features
+
+- re-vendor HetrixTools agent 2.4.2 (SAS and RAID drive health) ([#78](https://github.com/owine/ha-hetrixtools-agent/issues/78))
+  - With `check_drive_health` on, SAS drives now report their health, including drives behind MegaRAID and HP Smart Array RAID controllers
+  - A drive seen through more than one path is listed once
+  - A comma or semicolon in a drive's model or serial number no longer garbles the drive list
+
+### 🐛 Bug Fixes
+
+- let Renovate detect the vendored HetrixTools agent version ([#77](https://github.com/owine/ha-hetrixtools-agent/issues/77))
+- pass the TCP probe target to bash -c as arguments ([#73](https://github.com/owine/ha-hetrixtools-agent/issues/73))
+  - The host and port of a TCP ping target are passed to the probe as data, never as shell code
+- replace control characters in the debug log before the Log tab ([#72](https://github.com/owine/ha-hetrixtools-agent/issues/72))
+  - With `debug` on, control characters (such as terminal escape codes) in probe output are replaced before they reach the **Log** tab
+- raw probe output can no longer start a line in the debug log ([#71](https://github.com/owine/ha-hetrixtools-agent/issues/71))
+  - With `debug` on, ping and TCP probe output is indented, so it can no longer pose as a line of the app's own log
+- a missing ignored_disks no longer replaces the disk filter with 'null' ([#66](https://github.com/owine/ha-hetrixtools-agent/issues/66))
+  - If `ignored_disks` was cleared, the app could report its own container overlay as a host disk; an empty or missing value now always means the default filter
+  - A line break in an option value now stops the app with a clear error instead of being written into the agent's settings
+- pass the ping RTT to awk as data, not program text ([#63](https://github.com/owine/ha-hetrixtools-agent/issues/63))
+- keep the full SID out of the dry_run and debug logs ([#62](https://github.com/owine/ha-hetrixtools-agent/issues/62))
+  - With `debug` or `dry_run` on, the **Log** tab now shows only the first six characters of your `sid`, so logs are safer to share in bug reports
+  - `dry_run` now shows the payload as readable JSON instead of an encoded string
+  - The documentation now warns against posting your full `sid` or `hetrixtools.cfg`
+
+### 📦 Dependencies
+
+- update ghcr.io/home-assistant/base:3.24 docker digest to 5842248 ([#60](https://github.com/owine/ha-hetrixtools-agent/issues/60), [#70](https://github.com/owine/ha-hetrixtools-agent/issues/70))
+
 ## [0.2.3](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.2...hetrixtools-agent-v0.2.3) (2026-10-28)
 
 **1 bug fix · 2 dependency updates**
