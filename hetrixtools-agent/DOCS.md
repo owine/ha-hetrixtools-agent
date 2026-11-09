@@ -2,7 +2,7 @@
 
 ## What it does
 
-This app runs the HetrixTools server monitoring agent (v2.4.1) inside a container with access to the HA OS host. Because it uses the host network and, with protection mode off, full hardware access, the agent reports metrics from the real host rather than the container:
+This app runs the HetrixTools server monitoring agent (v2.4.2) inside a container with access to the HA OS host. Because it uses the host network and, with protection mode off, full hardware access, the agent reports metrics from the real host rather than the container:
 
 - CPU usage and load averages
 - RAM and swap
