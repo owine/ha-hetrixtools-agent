@@ -121,6 +121,11 @@ jobs:
           context: hetrixtools-agent
           # Base image is pinned (tag + digest) as the Dockerfile BUILD_FROM
           # default; buildx selects the arch from the multi-arch manifest.
+          # A release rebuilds the apk layer (and everything after it), so
+          # transitive and base Alpine packages get their security fixes; see
+          # APK_REFRESH in the Dockerfile. Push builds pass an empty value, the
+          # ARG's default, and keep their cache.
+          build-args: APK_REFRESH=${{ github.event_name == 'release' && format('{0}-{1}', github.run_id, github.run_attempt) || '' }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           # Push/sign only on a published release; branch pushes just build.
           push: ${{ github.event_name == 'release' }}

@@ -21,8 +21,26 @@ FROM ${BUILD_FROM}
 # rather than silently installing something stale — every pin must co-bump in
 # one PR, which is what the shared :alpine preset's grouping guarantees. When
 # the base image crosses a release line, update the `branch=v3.24` in
-# renovate.json's apk registryUrls to match.
-RUN apk add --no-cache \
+# renovate.json's apk registryUrls to match. The `apk upgrade` below moves base
+# packages forward too, including bash and curl, which the base already ships;
+# that is the same failure, surfacing for a pin that has fallen behind the
+# index, and the fix is the same Renovate bump.
+#
+# APK_REFRESH makes a release rebuild this layer. build-image reuses cached
+# layers (the GitHub Actions cache and the registry's :latest), and the pins
+# above name direct packages only: with no pin changed, a release reuses the
+# cached layer, so transitive packages never pick up Alpine's security fixes,
+# and neither do base packages, which `apk add` alone does not upgrade.
+# claude-terminal shipped an out-of-date libexpat (CVE-2026-77214) exactly this
+# way. build.yaml passes a value unique to the run on a release only, so every
+# release upgrades and reinstalls from the current index; push-to-main and local
+# test builds pass nothing and keep their cache. Docker already treats a changed
+# ARG as a cache miss at the next RUN; the echo names it there too, and logs
+# which refresh a build used.
+ARG APK_REFRESH=""
+RUN echo "apk refresh: ${APK_REFRESH:-none}" \
+    && apk upgrade --no-cache \
+    && apk add --no-cache \
     bash=5.3.9-r1 \
     coreutils=9.11-r0 \
     curl=8.23.0-r0 \
