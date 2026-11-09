@@ -33,9 +33,9 @@ yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository
 d="$(mktemp -d)"; v="$(cat hetrixtools-agent/upstream-agent.version)"
 curl -fsSL --retry 3 -o "$d/upstream.sh" \
   "https://raw.githubusercontent.com/hetrixtools/agent/refs/tags/$v/hetrixtools_agent.sh"
-echo "$(cat hetrixtools-agent/upstream-agent.sha256)  $d/upstream.sh" | shasum -a 256 -c -
-python3 -I tests/upstream-delta.py "$d/upstream.sh" \
-  hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh hetrixtools-agent/upstream-agent.patches
+echo "$(cat hetrixtools-agent/upstream-agent.sha256)  $d/upstream.sh" | shasum -a 256 -c - &&
+  python3 -I tests/upstream-delta.py "$d/upstream.sh" \
+    hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh hetrixtools-agent/upstream-agent.patches
 
 # Docker-based (need Docker; slow)
 tests/smoke.sh   # build amd64, render cfg + run one agent cycle in dry_run, bypassing s6
@@ -57,7 +57,7 @@ The base image's s6-overlay starts `rootfs/etc/s6-overlay/s6-rc.d/hetrixtools/ru
 3. Calls `render-config.sh`, a pure env→`hetrixtools.cfg` renderer. It refuses any value containing a line break, which would inject a cfg line. Its `IgnoredDisks` default carries upstream's four terms forward plus `^overlay`, because setting the option *replaces* upstream's default.
 4. Copies the agent to `/run/hetrixtools/` next to the cfg and loops it forever. Each agent invocation self-paces to about 60s; the loop's sleep only stops a crashing agent from hitting the API repeatedly. After each cycle, `debug.log` passes through `debug-log-filter.sh`, which shortens the SID and neutralises control characters, and is then truncated.
 
-**Adding or changing an option** touches several files that must stay in sync: `config.yaml` (`options` + `schema`), `translations/en.yaml`, the `run` script, `render-config.sh` (both the template *and* the line-break guard's variable list, which a bats test cross-checks), the options stub in `tests/boot.sh`, and `DOCS.md`.
+**Adding or changing an option** touches several files that must stay in sync. Under `hetrixtools-agent/`: `config.yaml` (`options` + `schema`), `translations/en.yaml`, the `run` script, and `DOCS.md`. In `tests/`: the options stub in `boot.sh`. An option the agent reads from the cfg also needs `render-config.sh` (both the template *and* the line-break guard's variable list; a bats test checks the two lists match) and an expected-output assertion in `tests/render-config.bats`, since nothing else checks how the option is rendered. An app-only option never reaches the cfg: `dry_run`, for example, is exported by `run` as `DryRun=1` for the agent to read from its environment.
 
 The `config.yaml` comments record why the container gets each privilege (`full_access`, `host_network`, `udev`, the `privileged` caps) and why `host_pid` must stay off, since s6 has to be PID 1. `tests/boot.sh` parses `config.yaml` to reproduce the Supervisor's grants with protection mode on and off. Keep those keys as plain `true`/`false` and `privileged` as a block list, or boot.sh refuses to parse them.
 
@@ -66,12 +66,12 @@ The `config.yaml` comments record why the container gets each privilege (`full_a
 Copyright HetrixTools, not MIT. It must be the upstream release named in `upstream-agent.version`, byte for byte, except inside `# >>> ha-app patch: <title> >>>` … `# <<< ha-app patch <<<` blocks. `upstream-agent.patches` declares each block (number of upstream lines it replaces, a hash, a title). `upstream-agent.sha256` pins the upstream file. Lint's "vendored agent vs upstream" step downloads upstream and runs `tests/upstream-delta.py` to enforce this.
 
 - Never edit the agent outside a patch block. To change behaviour, add or extend a block, then regenerate the manifest with `python3 -I tests/upstream-delta.py --suggest <upstream> <vendored>` and review the output.
-- Re-vendoring (triggered by a Renovate PR that bumps only `upstream-agent.version`, which never automerges): fetch the new upstream, re-apply every block, update `.sha256` and `.patches`, and update the agent version wherever DOCS.md names it (CI fails until all three match; `tests/docs-agent-version.bats` covers DOCS.md). By hand, with no check to catch a miss, also update the patch list in DOCS.md's "Maintenance and updates" section and the one in the description of the `hetrixtools/agent` rule in `renovate.json`.
+- Re-vendoring (triggered by a Renovate PR that bumps only `upstream-agent.version`, which never automerges): fetch the new upstream, re-apply every block, update `.sha256` and `.patches`, and update the agent version wherever `hetrixtools-agent/DOCS.md` names it (CI fails until all three match; `tests/docs-agent-version.bats` covers DOCS.md). By hand, with no check to catch a miss, also update the patch list in that file's "Maintenance and updates" section and the one in the description of the `hetrixtools/agent` rule in `renovate.json`.
 - The SID is the server's only credential. Nothing the app logs may contain it in full; the shortened form is the first 6 chars + `…`. Several patches and `debug-log-filter.sh` exist for this; `dry-run.bats`, `smoke.sh` and `debug-log-filter.bats` check it.
 
 ## Image and dependencies
 
-- `Dockerfile`: the base is pinned by tag + digest. Every `apk add` package is pinned to an exact version. Alpine purges old builds from its index, so a stale pin breaks the build, and Renovate co-bumps all pins in one grouped PR. When the base crosses an Alpine release line, change `branch=v3.XX` in `renovate.json`'s apk `registryUrls`, the only place the line is written.
+- `Dockerfile`: the base is pinned by tag + digest. Every `apk add` package is pinned to an exact version. Alpine purges old builds from its index, so a stale pin breaks the build, and Renovate co-bumps all pins in one grouped PR. When the base crosses an Alpine release line, change `branch=v3.XX` in `renovate.json`'s apk `registryUrls` to match; it is the only setting that names the line, and Renovate won't change it for you. (A Dockerfile comment quotes the current branch too; update it in the same PR.)
 - The image needs GNU grep (PCRE `-oP`), procps-ng, and iputils-ping (the agent parses iputils' `rtt min/avg/max` line; BusyBox's output silently yields 0 ms).
 - The `APK_REFRESH` build arg is set to a unique value only on releases, so each release re-runs `apk upgrade` instead of reusing a cached layer with stale transitive packages.
 - `renovate.json` extends `owine/renovate-config` presets. `hetrixtools/agent` and `home-assistant/builder` are deliberately never automerged; the reasons are in each rule's `description`.
