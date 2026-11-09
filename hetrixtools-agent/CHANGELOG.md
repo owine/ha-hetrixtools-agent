@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.3.0...hetrixtools-agent-v0.3.1) (2026-11-09)
+
+**1 bug fix**
+
+### 🐛 Bug Fixes
+
+- rebuild the image's Alpine packages on every release ([#79](https://github.com/owine/ha-hetrixtools-agent/issues/79))
+  - Picks up zlib 1.4-r0 from Alpine, which fixes CVE-2026-4738
+
 ## [0.3.0](https://github.com/owine/ha-hetrixtools-agent/compare/hetrixtools-agent-v0.2.3...hetrixtools-agent-v0.3.0) (2026-11-07)
 
 **1 feature · 7 bug fixes · 1 dependency update**
