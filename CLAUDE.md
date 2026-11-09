@@ -15,7 +15,7 @@ Run everything from the repo root; tests use repo-relative paths.
 bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
   tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
   tests/release-gate.bats tests/upstream-delta.bats tests/renovate-config.bats \
-  tests/dry-run.bats
+  tests/dry-run.bats tests/docs-agent-version.bats
 
 # One file, or one test by name
 bats tests/render-config.bats
@@ -66,7 +66,7 @@ The `config.yaml` comments record why the container gets each privilege (`full_a
 Copyright HetrixTools, not MIT. It must be the upstream release named in `upstream-agent.version`, byte for byte, except inside `# >>> ha-app patch: <title> >>>` … `# <<< ha-app patch <<<` blocks. `upstream-agent.patches` declares each block (number of upstream lines it replaces, a hash, a title). `upstream-agent.sha256` pins the upstream file. Lint's "vendored agent vs upstream" step downloads upstream and runs `tests/upstream-delta.py` to enforce this.
 
 - Never edit the agent outside a patch block. To change behaviour, add or extend a block, then regenerate the manifest with `python3 -I tests/upstream-delta.py --suggest <upstream> <vendored>` and review the output.
-- Re-vendoring (triggered by a Renovate PR that bumps only `upstream-agent.version`, which never automerges): fetch the new upstream, re-apply every block, and update `.sha256` and `.patches` (CI fails until those match). By hand, with no check to catch a miss, also update the agent version in DOCS.md, which names it twice (the introduction and "Maintenance and updates"), the patch list in that maintenance section, and the patch list in the description of the `hetrixtools/agent` rule in `renovate.json`.
+- Re-vendoring (triggered by a Renovate PR that bumps only `upstream-agent.version`, which never automerges): fetch the new upstream, re-apply every block, update `.sha256` and `.patches`, and update the agent version wherever DOCS.md names it (CI fails until all three match; `tests/docs-agent-version.bats` covers DOCS.md). By hand, with no check to catch a miss, also update the patch list in DOCS.md's "Maintenance and updates" section and the one in the description of the `hetrixtools/agent` rule in `renovate.json`.
 - The SID is the server's only credential. Nothing the app logs may contain it in full; the shortened form is the first 6 chars + `…`. Several patches and `debug-log-filter.sh` exist for this; `dry-run.bats`, `smoke.sh` and `debug-log-filter.bats` check it.
 
 ## Image and dependencies
