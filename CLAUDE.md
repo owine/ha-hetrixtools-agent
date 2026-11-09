@@ -28,6 +28,15 @@ shellcheck tests/smoke.sh tests/boot.sh .github/scripts/release-gate.sh
 hadolint -c .hadolint.yaml hetrixtools-agent/Dockerfile
 yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository.yaml .github
 
+# Vendored agent vs upstream (Lint's last step; run it after touching the agent or
+# re-vendoring). The download is only hashed and read as text, never run.
+d="$(mktemp -d)"; v="$(cat hetrixtools-agent/upstream-agent.version)"
+curl -fsSL --retry 3 -o "$d/upstream.sh" \
+  "https://raw.githubusercontent.com/hetrixtools/agent/refs/tags/$v/hetrixtools_agent.sh"
+echo "$(cat hetrixtools-agent/upstream-agent.sha256)  $d/upstream.sh" | shasum -a 256 -c -
+python3 -I tests/upstream-delta.py "$d/upstream.sh" \
+  hetrixtools-agent/rootfs/usr/lib/hetrixtools/hetrixtools_agent.sh hetrixtools-agent/upstream-agent.patches
+
 # Docker-based (need Docker; slow)
 tests/smoke.sh   # build amd64, render cfg + run one agent cycle in dry_run, bypassing s6
 tests/boot.sh    # boot through real s6-overlay + bashio against a stub Supervisor (BOOT_PLATFORM=linux/arm64 for arm)
