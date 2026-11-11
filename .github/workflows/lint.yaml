@@ -40,27 +40,32 @@ jobs:
         run: |
           yamllint --version
           yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository.yaml .github
-      # The bats install below hits the runner's apt mirror on every run. On
-      # 2026-11-11 the runners could not resolve azure.archive.ubuntu.com for
-      # hours, so `apt-get update` failed. This speed-tests the current mirror
-      # against random ones from mirrors.ubuntu.com and switches only if another
-      # one wins (on a healthy day nothing changes); it also sets
-      # APT::Acquire::Retries "3". apt still verifies every InRelease, so a
-      # third-party mirror cannot alter packages. continue-on-error is
-      # load-bearing: the action's own `sudo apt-get update` (run when the lists
-      # are over 60 min old, always true on a fresh runner) sits outside its
-      # `|| exit 0` guard, so with no reachable mirror that call fails the step.
-      # Same SHA as claude-terminal-home-assistant so Renovate bumps both.
-      - name: Pick a reachable apt mirror
-        timeout-minutes: 3
-        continue-on-error: true
-        uses: vegardit/fast-apt-mirror.sh@806c59276adfff2df420124ad5e4587f018c358a # 1.4.5
-      # bats is not part of the runner image; install only if it is missing.
+      # bats is not on the ubuntu-26.04 image. It used to come from apt, so every
+      # Lint run did `apt-get update` against azure.archive.ubuntu.com; on
+      # 2026-11-11 the runners could not resolve any *.ubuntu.com name for hours
+      # (mirrors.ubuntu.com included, so a mirror switcher had nothing to switch
+      # to) and Lint failed at the install. Fetching bats-core from GitHub takes
+      # the Ubuntu mirror out of Lint entirely. BATS_COMMIT is the commit the
+      # annotated tag v1.14.0 points to, not the tag object (7868b95…): a commit
+      # SHA is content-addressed, the same guarantee as the SHA-pinned actions,
+      # whereas a tag can be moved. bats-core/bats-action was rejected because
+      # it pipes an unchecked tarball into tar, defaults to `latest`, and calls
+      # the unauthenticated GitHub API. A custom manager in renovate.json bumps
+      # BATS_VERSION and BATS_COMMIT together; keep the two lines adjacent.
+      - name: Install bats
+        env:
+          BATS_VERSION: 1.14.0
+          BATS_COMMIT: eb7f42f8d608ac693d7a4b67474f6714ea68cfc5
+        run: |
+          d="$(mktemp -d)"
+          git -C "$d" init -q
+          git -C "$d" fetch -q --depth 1 https://github.com/bats-core/bats-core.git "$BATS_COMMIT"
+          git -C "$d" checkout -q FETCH_HEAD
+          "$d/install.sh" "$HOME/.local"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: bats
         run: |
-          command -v bats >/dev/null || {
-            sudo apt-get update && sudo apt-get install -y bats
-          }
+          bats --version
           bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
             tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
             tests/release-gate.bats tests/upstream-delta.bats tests/renovate-config.bats \

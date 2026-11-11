@@ -12,6 +12,7 @@ Run everything from the repo root; tests use repo-relative paths.
 
 ```sh
 # Unit tests (bats). CI runs this exact list in .github/workflows/lint.yaml
+# CI installs bats-core at the version/commit pinned in lint.yaml; locally, whatever bats is on PATH runs.
 bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
   tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
   tests/release-gate.bats tests/upstream-delta.bats tests/renovate-config.bats \

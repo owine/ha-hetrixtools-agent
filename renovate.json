@@ -15,6 +15,15 @@
       "matchStrings": ["^(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s*$"],
       "depNameTemplate": "hetrixtools/agent",
       "datasourceTemplate": "github-tags"
+    },
+    {
+      "description": "Track the bats-core that Lint installs from GitHub (.github/workflows/lint.yaml, step 'Install bats'). It lives here rather than in the shared preset because that preset's `# renovate:` annotation manager carries only a version, and this pin is a version plus the commit it resolves to: the commit is what the step fetches, the version is what Renovate compares. Both are captured in one match, so a bump rewrites them together. BATS_COMMIT is the commit the annotated tag points to, never the tag object's own SHA. The fields are joined with `[ \\t]` and exactly one `\\n`, not `\\s`, so a match cannot run across into a neighbouring block (owine/renovate-config PR #4). tests/renovate-config.bats checks this pattern against the real file.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/lint\\.yaml$/"],
+      "matchStrings": ["BATS_VERSION:[ \\t]*(?<currentValue>\\d+\\.\\d+\\.\\d+)[ \\t]*\\n[ \\t]*BATS_COMMIT:[ \\t]*(?<currentDigest>[0-9a-f]{40})"],
+      "depNameTemplate": "bats-core/bats-core",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.*)$"
     }
   ],
   "packageRules": [
