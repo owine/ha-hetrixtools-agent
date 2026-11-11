@@ -62,6 +62,13 @@ jobs:
           git -C "$d" fetch -q --depth 1 https://github.com/bats-core/bats-core.git "$BATS_COMMIT"
           git -C "$d" checkout -q FETCH_HEAD
           "$d/install.sh" "$HOME/.local"
+          # Only Renovate reads BATS_VERSION; the step installs BATS_COMMIT. A
+          # hand edit that moves one line without the other would otherwise go
+          # unnoticed, and Renovate would then compare against a version that
+          # isn't installed. Fail if the commit isn't the release it claims to be.
+          got="$("$HOME/.local/bin/bats" --version)"
+          [ "$got" = "Bats $BATS_VERSION" ] || {
+            echo "::error::BATS_COMMIT installs '$got', but BATS_VERSION says $BATS_VERSION"; exit 1; }
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: bats
         run: |
