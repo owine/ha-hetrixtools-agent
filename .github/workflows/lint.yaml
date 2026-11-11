@@ -40,12 +40,32 @@ jobs:
         run: |
           yamllint --version
           yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository.yaml .github
-      # bats is not part of the runner image; install only if it is missing.
+      # bats is not on the ubuntu-26.04 image. It used to come from apt, so every
+      # Lint run did `apt-get update` against azure.archive.ubuntu.com; on
+      # 2026-11-11 the runners could not resolve any *.ubuntu.com name for hours
+      # (mirrors.ubuntu.com included, so a mirror switcher had nothing to switch
+      # to) and Lint failed at the install. Fetching bats-core from GitHub takes
+      # the Ubuntu mirror out of Lint entirely. BATS_COMMIT is the commit the
+      # annotated tag v1.14.0 points to, not the tag object (7868b95…): a commit
+      # SHA is content-addressed, the same guarantee as the SHA-pinned actions,
+      # whereas a tag can be moved. bats-core/bats-action was rejected because
+      # it pipes an unchecked tarball into tar, defaults to `latest`, and calls
+      # the unauthenticated GitHub API. A custom manager in renovate.json bumps
+      # BATS_VERSION and BATS_COMMIT together; keep the two lines adjacent.
+      - name: Install bats
+        env:
+          BATS_VERSION: 1.14.0
+          BATS_COMMIT: eb7f42f8d608ac693d7a4b67474f6714ea68cfc5
+        run: |
+          d="$(mktemp -d)"
+          git -C "$d" init -q
+          git -C "$d" fetch -q --depth 1 https://github.com/bats-core/bats-core.git "$BATS_COMMIT"
+          git -C "$d" checkout -q FETCH_HEAD
+          "$d/install.sh" "$HOME/.local"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: bats
         run: |
-          command -v bats >/dev/null || {
-            sudo apt-get update && sudo apt-get install -y bats
-          }
+          bats --version
           bats tests/render-config.bats tests/detect-interfaces.bats tests/debug-log-filter.bats \
             tests/ping-rtt.bats tests/probe-debug-log.bats tests/tcp-probe.bats \
             tests/release-gate.bats tests/upstream-delta.bats tests/renovate-config.bats \
