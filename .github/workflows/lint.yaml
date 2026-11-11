@@ -57,18 +57,26 @@ jobs:
           BATS_VERSION: 1.14.0
           BATS_COMMIT: eb7f42f8d608ac693d7a4b67474f6714ea68cfc5
         run: |
-          d="$(mktemp -d)"
-          git -C "$d" init -q
-          git -C "$d" fetch -q --depth 1 https://github.com/bats-core/bats-core.git "$BATS_COMMIT"
-          git -C "$d" checkout -q FETCH_HEAD
-          "$d/install.sh" "$HOME/.local"
+          repo=https://github.com/bats-core/bats-core.git
           # Only Renovate reads BATS_VERSION; the step installs BATS_COMMIT. A
           # hand edit that moves one line without the other would otherwise go
           # unnoticed, and Renovate would then compare against a version that
-          # isn't installed. Fail if the commit isn't the release it claims to be.
-          got="$("$HOME/.local/bin/bats" --version)"
-          [ "$got" = "Bats $BATS_VERSION" ] || {
-            echo "::error::BATS_COMMIT installs '$got', but BATS_VERSION says $BATS_VERSION"; exit 1; }
+          # isn't installed. Comparing `bats --version` is not enough: any
+          # commit between two releases reports the earlier version. So resolve
+          # the tag to the commit it names. For an annotated tag, ls-remote
+          # lists the tag object and then its peeled `^{}` line (the commit);
+          # a lightweight tag has only the first line, which is already the
+          # commit. Either way the last line is the commit. If upstream ever
+          # moves the tag, this fails too, which is a signal worth stopping on.
+          tagged="$(git ls-remote --tags "$repo" "refs/tags/v$BATS_VERSION" \
+            "refs/tags/v$BATS_VERSION^{}" | tail -n 1 | cut -f 1)"
+          [ "$tagged" = "$BATS_COMMIT" ] || {
+            echo "::error::tag v$BATS_VERSION is commit '$tagged', but BATS_COMMIT is $BATS_COMMIT"; exit 1; }
+          d="$(mktemp -d)"
+          git -C "$d" init -q
+          git -C "$d" fetch -q --depth 1 "$repo" "$BATS_COMMIT"
+          git -C "$d" checkout -q FETCH_HEAD
+          "$d/install.sh" "$HOME/.local"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: bats
         run: |
