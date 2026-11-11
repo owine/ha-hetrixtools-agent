@@ -40,6 +40,21 @@ jobs:
         run: |
           yamllint --version
           yamllint hetrixtools-agent/config.yaml hetrixtools-agent/translations repository.yaml .github
+      # The bats install below hits the runner's apt mirror on every run. On
+      # 2026-11-11 the runners could not resolve azure.archive.ubuntu.com for
+      # hours, so `apt-get update` failed. This speed-tests the current mirror
+      # against random ones from mirrors.ubuntu.com and switches only if another
+      # one wins (on a healthy day nothing changes); it also sets
+      # APT::Acquire::Retries "3". apt still verifies every InRelease, so a
+      # third-party mirror cannot alter packages. continue-on-error is
+      # load-bearing: the action's own `sudo apt-get update` (run when the lists
+      # are over 60 min old, always true on a fresh runner) sits outside its
+      # `|| exit 0` guard, so with no reachable mirror that call fails the step.
+      # Same SHA as claude-terminal-home-assistant so Renovate bumps both.
+      - name: Pick a reachable apt mirror
+        timeout-minutes: 3
+        continue-on-error: true
+        uses: vegardit/fast-apt-mirror.sh@806c59276adfff2df420124ad5e4587f018c358a # 1.4.5
       # bats is not part of the runner image; install only if it is missing.
       - name: bats
         run: |
