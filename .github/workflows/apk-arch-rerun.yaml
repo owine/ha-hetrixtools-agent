@@ -1,0 +1,34 @@
+---
+# Alpine publishes each architecture separately, and either one can trail the
+# other by hours. An `alpine packages` Renovate PR built in that gap fails on
+# the late architecture with `unable to select packages`, and no soak on the
+# Renovate side can wait it out (the apk datasource dates a release by its
+# source commit, the same on every architecture). The reusable workflow reruns
+# such a PR's failed Boot jobs once every apk pin is on every architecture.
+# See owine/renovate-config's README, "apk architecture lag".
+name: apk arch-lag rerun
+
+"on":
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  pull-requests: read
+  contents: read
+
+jobs:
+  rerun:
+    # Follows @main like the Renovate presets it pairs with, so a fix to the
+    # reusable workflow reaches every consumer on its next tick.
+    uses: owine/renovate-config/.github/workflows/apk-arch-rerun.yml@main
+    with:
+      # Boot, not Build: Build runs only on main and on releases, so it never
+      # builds a PR. Boot builds amd64 and aarch64 natively on pull_request.
+      workflow: boot.yaml
+      dockerfile: hetrixtools-agent/Dockerfile
+      # A second place the Alpine line is written: bump it together with
+      # `branch=` in renovate.json's apk registryUrls. A stale value fails
+      # safe (pins show as missing, nothing is rerun).
+      alpine-branch: v3.24

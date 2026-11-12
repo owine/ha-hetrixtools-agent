@@ -21,10 +21,12 @@ FROM ${BUILD_FROM}
 # rather than silently installing something stale — every pin must co-bump in
 # one PR, which is what the shared :alpine preset's grouping guarantees. When
 # the base image crosses a release line, update the `branch=v3.24` in
-# renovate.json's apk registryUrls to match. The `apk upgrade` below moves base
-# packages forward too, including bash and curl, which the base already ships;
-# that is the same failure, surfacing for a pin that has fallen behind the
-# index, and the fix is the same Renovate bump.
+# renovate.json's apk registryUrls and `alpine-branch` in
+# .github/workflows/apk-arch-rerun.yaml to match (a stale `alpine-branch`
+# stays green but stops rerunning arch-lag failures). The `apk upgrade` below
+# moves base packages forward too, including bash and curl, which the base
+# already ships; that is the same failure, surfacing for a pin that has fallen
+# behind the index, and the fix is the same Renovate bump.
 #
 # APK_REFRESH makes a release rebuild this layer. build-image reuses cached
 # layers (the GitHub Actions cache and the registry's :latest), and the pins
