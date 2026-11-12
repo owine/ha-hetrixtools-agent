@@ -19,6 +19,9 @@ jobs:
     # Each arch boots natively on its own runner (no QEMU). The job names are
     # the required status checks in the main ruleset: renaming this job or
     # changing the matrix arch values means updating the ruleset too.
+    # apk-arch-rerun.yaml names this file as the workflow that builds the image
+    # on PRs: rename it there too, and if the PR image build ever moves out of
+    # Boot, point it at the new workflow, or it quietly stops rerunning anything.
     name: Boot through s6-overlay (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
