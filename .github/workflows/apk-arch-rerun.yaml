@@ -22,7 +22,7 @@ jobs:
   rerun:
     # Follows @main like the Renovate presets it pairs with, so a fix to the
     # reusable workflow reaches every consumer on its next tick.
-    uses: owine/renovate-config/.github/workflows/apk-arch-rerun.yml@main
+    uses: owine/renovate-config/.github/workflows/apk-arch-rerun.yml@14ed952560b91f9df677c8601c370288ed693184 # main
     with:
       # Boot, not Build: Build runs only on main and on releases, so it never
       # builds a PR. Boot builds amd64 and aarch64 natively on pull_request.
